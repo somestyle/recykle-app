@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { CityInfo } from '@/lib/types';
 import { resolveCityFromPostal } from '@/lib/types';
 
@@ -8,100 +8,198 @@ interface Props {
   onCitySelected: (city: CityInfo) => void;
 }
 
-const DEMO_CITIES: Array<{ label: string; postal: string }> = [
-  { label: 'Markham, ON', postal: 'L3R 2A1' },
-  { label: 'Toronto, ON', postal: 'M5V 3A9' },
-  { label: 'San Francisco, CA', postal: '94102' },
+const DEMO_CITIES = [
+  { label: 'Markham', region: 'ON · Canada', postal: 'L3R 2A1', flag: '🍁' },
+  { label: 'Toronto', region: 'ON · Canada', postal: 'M5V 3A9', flag: '🍁' },
+  { label: 'San Francisco', region: 'CA · USA',  postal: '94102',   flag: '🇺🇸' },
 ];
 
 export default function LocationSetup({ onCitySelected }: Props) {
   const [postal, setPostal] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus input on mount
+  useEffect(() => {
+    const t = setTimeout(() => inputRef.current?.focus(), 300);
+    return () => clearTimeout(t);
+  }, []);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!postal.trim()) return;
     const city = resolveCityFromPostal(postal);
     if (!city) {
-      setError('Postal code not recognized. Try L3R 2A1 (Markham), M5V 3A9 (Toronto), or 94102 (SF).');
+      setError('Not recognized. Try L3R 2A1, M5V 3A9, or 94102.');
       return;
     }
+    setLoading(true);
     setError('');
-    onCitySelected(city);
+    // Brief loading flash before transitioning
+    setTimeout(() => onCitySelected(city), 220);
   }
 
-  function handleDemoCity(p: string) {
-    setPostal(p);
+  function handleDemoCity(postal: string) {
+    const city = resolveCityFromPostal(postal);
+    if (city) {
+      setLoading(true);
+      setTimeout(() => onCitySelected(city), 180);
+    }
+  }
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value.toUpperCase();
+    setPostal(val);
     setError('');
-    const city = resolveCityFromPostal(p);
-    if (city) onCitySelected(city);
+    // Auto-submit if we get a valid match while typing
+    if (val.length >= 5) {
+      const city = resolveCityFromPostal(val);
+      if (city) {
+        setLoading(true);
+        setTimeout(() => onCitySelected(city), 180);
+      }
+    }
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-black px-6 text-white">
+    <div className="screen-enter relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-black px-6">
+
+      {/* Ambient radial glow */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: 'radial-gradient(ellipse 70% 50% at 50% 20%, rgba(34,197,94,0.12) 0%, transparent 70%)',
+        }}
+      />
+
       {/* Logo */}
-      <div className="mb-8 text-center">
-        <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-green-500 text-4xl shadow-lg shadow-green-500/30">
-          ♻️
+      <div className="relative mb-10 flex flex-col items-center">
+        {/* Animated ambient rings */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="logo-pulse absolute h-24 w-24 rounded-full bg-green-500/20" />
+          <div className="logo-pulse-delay absolute h-24 w-24 rounded-full bg-green-500/20" />
         </div>
-        <h1 className="text-4xl font-bold tracking-tight">Recykle</h1>
-        <p className="mt-2 text-gray-400">Your AI recycling assistant</p>
+
+        {/* Icon circle */}
+        <div
+          className="relative z-10 flex h-20 w-20 items-center justify-center rounded-full"
+          style={{ background: 'linear-gradient(145deg, #22c55e, #16a34a)', boxShadow: '0 0 40px rgba(34,197,94,0.35), inset 0 1px 1px rgba(255,255,255,0.2)' }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" className="h-10 w-10" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M7 19H4.815a1.83 1.83 0 0 1-1.57-.881 1.785 1.785 0 0 1-.004-1.784L7.196 9.5" />
+            <path d="M11 19h8.203a1.83 1.83 0 0 0 1.556-.89 1.784 1.784 0 0 0 0-1.775l-1.226-2.12" />
+            <path d="m14 16-3 3 3 3" />
+            <path d="M8.293 13.596 7.196 9.5 3.1 10.598" />
+            <path d="m9.344 5.811 1.093-1.892A1.83 1.83 0 0 1 11.985 3a1.784 1.784 0 0 1 1.546.888l3.943 6.843" />
+            <path d="m13.378 9.633 4.096 1.098 1.097-4.096" />
+          </svg>
+        </div>
+
+        {/* Brand name */}
+        <h1 className="mt-5 text-[2.4rem] font-bold tracking-tight text-white" style={{ letterSpacing: '-0.02em' }}>
+          Recykle
+        </h1>
+        <p className="mt-1.5 text-sm" style={{ color: 'var(--text-secondary)' }}>
+          AI-powered recycling assistant
+        </p>
       </div>
 
-      {/* Form */}
-      <div className="w-full max-w-sm">
-        <p className="mb-4 text-center text-sm text-gray-400">
-          Enter your postal code so Recykle knows your local recycling rules.
-        </p>
+      {/* Form card */}
+      <div className="w-full max-w-[340px]">
+        <form onSubmit={handleSubmit}>
+          {/* Input */}
+          <div className="relative">
+            <div className="pointer-events-none absolute inset-y-0 left-4 flex items-center">
+              <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 stroke-zinc-500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+            </div>
+            <input
+              ref={inputRef}
+              type="text"
+              inputMode="text"
+              value={postal}
+              onChange={handleChange}
+              placeholder="Postal code or ZIP"
+              maxLength={10}
+              autoCapitalize="characters"
+              autoComplete="postal-code"
+              className="w-full rounded-2xl py-4 pl-10 pr-4 text-base font-medium tracking-wider text-white outline-none transition-all placeholder:font-normal placeholder:tracking-normal placeholder:text-zinc-600"
+              style={{
+                background: 'var(--surface)',
+                border: error ? '1.5px solid rgba(239,68,68,0.6)' : '1.5px solid var(--border)',
+                boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.3)',
+              }}
+              onFocus={e => (e.currentTarget.style.borderColor = 'rgba(34,197,94,0.5)')}
+              onBlur={e => (e.currentTarget.style.borderColor = error ? 'rgba(239,68,68,0.6)' : 'var(--border)')}
+            />
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <input
-            type="text"
-            value={postal}
-            onChange={(e) => {
-              setPostal(e.target.value);
-              setError('');
-            }}
-            placeholder="e.g. L3R 2A1 or 94102"
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center text-lg tracking-widest text-white placeholder-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
-            autoCapitalize="characters"
-            autoComplete="postal-code"
-          />
-
+          {/* Error */}
           {error && (
-            <p className="text-center text-sm text-red-400">{error}</p>
+            <p className="mt-2 flex items-center gap-1.5 text-xs text-red-400">
+              <span>⚠</span> {error}
+            </p>
           )}
 
+          {/* Submit button */}
           <button
             type="submit"
-            disabled={!postal.trim()}
-            className="w-full rounded-xl bg-green-500 py-3 text-lg font-semibold text-white transition-all hover:bg-green-400 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+            disabled={!postal.trim() || loading}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-semibold text-white transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-35"
+            style={{
+              background: postal.trim() && !loading ? 'linear-gradient(145deg, #22c55e, #16a34a)' : 'var(--surface)',
+              boxShadow: postal.trim() && !loading ? '0 4px 20px rgba(34,197,94,0.3)' : 'none',
+              border: postal.trim() && !loading ? 'none' : '1.5px solid var(--border)',
+            }}
           >
-            Get Started →
+            {loading ? (
+              <>
+                <span className="spinner inline-block h-4 w-4 rounded-full border-2 border-white/30 border-t-white" />
+                <span>Loading…</span>
+              </>
+            ) : (
+              <>
+                <span>Confirm location</span>
+                <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 8h10M9 4l4 4-4 4" />
+                </svg>
+              </>
+            )}
           </button>
         </form>
 
-        {/* Demo shortcuts */}
-        <div className="mt-6">
-          <p className="mb-3 text-center text-xs text-gray-500 uppercase tracking-wider">
-            Demo cities
-          </p>
-          <div className="flex flex-col gap-2">
-            {DEMO_CITIES.map((c) => (
-              <button
-                key={c.postal}
-                onClick={() => handleDemoCity(c.postal)}
-                className="rounded-lg border border-white/10 py-2 text-sm text-gray-300 transition hover:border-green-500/50 hover:bg-white/5 hover:text-white"
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
+        {/* Divider */}
+        <div className="my-6 flex items-center gap-3">
+          <div className="h-px flex-1" style={{ background: 'var(--border)' }} />
+          <span className="text-xs uppercase tracking-widest" style={{ color: 'var(--text-tertiary)' }}>or pick a city</span>
+          <div className="h-px flex-1" style={{ background: 'var(--border)' }} />
+        </div>
+
+        {/* City chips — 3-column horizontal grid */}
+        <div className="grid grid-cols-3 gap-2">
+          {DEMO_CITIES.map((c) => (
+            <button
+              key={c.postal}
+              onClick={() => handleDemoCity(c.postal)}
+              className="flex flex-col items-center gap-1 rounded-2xl px-2 py-3 text-center transition-all active:scale-95"
+              style={{ background: 'var(--surface)', border: '1.5px solid var(--border)' }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(34,197,94,0.4)')}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+            >
+              <span className="text-xl leading-none">{c.flag}</span>
+              <span className="text-xs font-semibold leading-tight text-white">{c.label}</span>
+              <span className="text-[10px] leading-none" style={{ color: 'var(--text-tertiary)' }}>{c.region}</span>
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Footer */}
-      <p className="mt-12 text-xs text-gray-600">
-        Powered by Gemini Live API · Google Cloud
+      <p className="absolute bottom-8 text-center text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+        Gemini Live API · Google Cloud
       </p>
     </div>
   );

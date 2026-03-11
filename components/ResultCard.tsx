@@ -9,104 +9,163 @@ interface Props {
   onDismiss: () => void;
 }
 
-const CATEGORY_CONFIG: Record<
-  DisposalCategory,
-  { emoji: string; label: string; colorClass: string; bgClass: string }
-> = {
+interface CategoryStyle {
+  emoji: string;
+  label: string;
+  color: string;
+  bg: string;
+  gradient: string;
+  actionLabel: string;
+}
+
+const CATEGORY: Record<DisposalCategory, CategoryStyle> = {
   Recycling: {
     emoji: '♻️',
     label: 'Recycling',
-    colorClass: 'text-green-400',
-    bgClass: 'bg-green-500/20 border-green-500/30',
+    color: '#22c55e',
+    bg: 'rgba(34, 197, 94, 0.12)',
+    gradient: 'linear-gradient(135deg, rgba(34,197,94,0.2) 0%, rgba(34,197,94,0.05) 100%)',
+    actionLabel: 'Blue box · Curbside',
   },
   Garbage: {
     emoji: '🗑️',
     label: 'Garbage',
-    colorClass: 'text-red-400',
-    bgClass: 'bg-red-500/20 border-red-500/30',
+    color: '#ef4444',
+    bg: 'rgba(239, 68, 68, 0.12)',
+    gradient: 'linear-gradient(135deg, rgba(239,68,68,0.2) 0%, rgba(239,68,68,0.05) 100%)',
+    actionLabel: 'Black bin · Landfill',
   },
   Compost: {
     emoji: '🌱',
     label: 'Compost',
-    colorClass: 'text-lime-400',
-    bgClass: 'bg-lime-500/20 border-lime-500/30',
+    color: '#84cc16',
+    bg: 'rgba(132, 204, 22, 0.12)',
+    gradient: 'linear-gradient(135deg, rgba(132,204,22,0.2) 0%, rgba(132,204,22,0.05) 100%)',
+    actionLabel: 'Green bin · Organics',
   },
   'Depot Drop-off': {
     emoji: '🏭',
     label: 'Depot Drop-off',
-    colorClass: 'text-orange-400',
-    bgClass: 'bg-orange-500/20 border-orange-500/30',
+    color: '#f97316',
+    bg: 'rgba(249, 115, 22, 0.12)',
+    gradient: 'linear-gradient(135deg, rgba(249,115,22,0.2) 0%, rgba(249,115,22,0.05) 100%)',
+    actionLabel: 'Hazardous waste depot',
   },
   'Bulk Item': {
     emoji: '📦',
     label: 'Bulk Item',
-    colorClass: 'text-purple-400',
-    bgClass: 'bg-purple-500/20 border-purple-500/30',
+    color: '#8b5cf6',
+    bg: 'rgba(139, 92, 246, 0.12)',
+    gradient: 'linear-gradient(135deg, rgba(139,92,246,0.2) 0%, rgba(139,92,246,0.05) 100%)',
+    actionLabel: 'Special municipal pickup',
   },
 };
 
 export default function ResultCard({ result, city, thumbnail, onDismiss }: Props) {
-  const config = CATEGORY_CONFIG[result.category] ?? CATEGORY_CONFIG['Garbage'];
+  const cat = CATEGORY[result.category] ?? CATEGORY['Garbage'];
 
   return (
     <div className="absolute inset-x-0 bottom-0 z-40 slide-up">
-      {/* Tap-outside backdrop */}
+      {/* Tap-behind backdrop */}
       <div
-        className="absolute inset-0 -top-screen"
+        className="absolute"
+        style={{ top: '-100vh', right: 0, bottom: 0, left: 0 }}
         onClick={onDismiss}
-        style={{ top: '-100vh' }}
       />
 
-      <div className="relative mx-auto max-w-lg rounded-t-3xl bg-gray-950 px-5 pb-safe-bottom pb-8 pt-5 shadow-2xl">
+      <div
+        className="relative mx-auto max-w-lg rounded-t-[28px] pb-safe-8"
+        style={{ background: '#111114', boxShadow: '0 -8px 40px rgba(0,0,0,0.7)' }}
+      >
         {/* Drag handle */}
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/20" />
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="h-1 w-9 rounded-full bg-white/15" />
+        </div>
 
-        <div className="flex gap-4">
-          {/* Thumbnail */}
+        {/* ── Category hero banner ─────────────────────────────────── */}
+        <div
+          className="mx-4 mt-2 rounded-2xl px-4 py-4"
+          style={{ background: cat.gradient, border: `1px solid ${cat.color}28` }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: `${cat.color}99` }}>
+                DISPOSAL CATEGORY
+              </p>
+              <p className="mt-0.5 text-3xl font-bold tracking-tight" style={{ color: cat.color }}>
+                {cat.label}
+              </p>
+              <p className="mt-1 text-sm" style={{ color: `${cat.color}80` }}>
+                {cat.actionLabel}
+              </p>
+            </div>
+            <div
+              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-3xl"
+              style={{ background: cat.bg }}
+            >
+              {cat.emoji}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Item details ─────────────────────────────────────────── */}
+        <div className="mt-4 flex gap-3 px-4">
           {thumbnail && (
             <img
               src={thumbnail}
               alt="Scanned item"
-              className="h-20 w-20 flex-shrink-0 rounded-xl object-cover"
+              className="h-[68px] w-[68px] shrink-0 rounded-xl object-cover"
+              style={{ border: '1px solid rgba(255,255,255,0.08)' }}
             />
           )}
-
-          <div className="min-w-0 flex-1">
-            {/* Category badge */}
-            <div
-              className={`mb-2 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-semibold ${config.bgClass} ${config.colorClass}`}
+          <div className="min-w-0">
+            <h2
+              className="text-xl font-bold leading-snug text-white"
+              style={{ letterSpacing: '-0.01em' }}
             >
-              <span>{config.emoji}</span>
-              <span>{config.label}</span>
-            </div>
-
-            {/* Item name */}
-            <h2 className="text-lg font-bold leading-tight text-white">{result.item}</h2>
-            <p className="text-sm text-gray-400">{result.material}</p>
+              {result.item}
+            </h2>
+            <p className="mt-0.5 text-sm" style={{ color: 'var(--text-secondary)' }}>
+              {result.material}
+            </p>
+            <p className="mt-1 text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+              Rules for {city}
+            </p>
           </div>
         </div>
 
-        {/* City */}
-        <p className="mt-3 text-xs text-gray-500">Rules for {city}</p>
+        {/* ── Explanation ──────────────────────────────────────────── */}
+        <p className="mt-4 px-4 text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+          {result.explanation}
+        </p>
 
-        {/* Explanation */}
-        <p className="mt-2 text-sm text-gray-300 leading-relaxed">{result.explanation}</p>
-
-        {/* Tip */}
+        {/* ── Preparation tip ──────────────────────────────────────── */}
         {result.tip && (
-          <div className="mt-3 flex items-start gap-2 rounded-xl bg-white/5 px-3 py-2.5">
-            <span className="mt-0.5 text-yellow-400">💡</span>
-            <p className="text-sm text-gray-300">{result.tip}</p>
+          <div
+            className="mx-4 mt-3 flex items-start gap-2.5 rounded-xl px-3.5 py-3"
+            style={{ background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.18)' }}
+          >
+            <span className="mt-0.5 shrink-0 text-base">💡</span>
+            <p className="text-sm leading-snug" style={{ color: 'rgba(251,191,36,0.85)' }}>
+              {result.tip}
+            </p>
           </div>
         )}
 
-        {/* Continue button */}
-        <button
-          onClick={onDismiss}
-          className="mt-4 w-full rounded-xl bg-white/10 py-3 text-sm font-medium text-white transition hover:bg-white/20 active:scale-95"
-        >
-          Continue scanning
-        </button>
+        {/* ── CTA ──────────────────────────────────────────────────── */}
+        <div className="mt-4 px-4">
+          <button
+            onClick={onDismiss}
+            className="w-full rounded-2xl py-3.5 text-sm font-semibold text-white transition-all active:scale-[0.98]"
+            style={{
+              background: cat.bg,
+              border: `1px solid ${cat.color}30`,
+              color: cat.color,
+            }}
+          >
+            Continue scanning
+          </button>
+        </div>
       </div>
     </div>
   );

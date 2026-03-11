@@ -2,51 +2,121 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Design tokens ─────────────────────────────────────────────────────────── */
 :root {
-  --color-recycling: #22c55e;
-  --color-garbage: #ef4444;
-  --color-compost: #a3e635;
-  --color-depot: #f97316;
-  --color-bulk: #8b5cf6;
+  --bg: #000000;
+  --surface: #111114;
+  --surface-2: #1c1c20;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-hover: rgba(255, 255, 255, 0.14);
+
+  --green: #22c55e;
+  --green-glow: rgba(34, 197, 94, 0.22);
+
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --text-tertiary: #52525b;
+
+  /* Category colors */
+  --recycling: #22c55e;
+  --recycling-bg: rgba(34, 197, 94, 0.13);
+  --garbage: #ef4444;
+  --garbage-bg: rgba(239, 68, 68, 0.13);
+  --compost: #84cc16;
+  --compost-bg: rgba(132, 204, 22, 0.13);
+  --depot: #f97316;
+  --depot-bg: rgba(249, 115, 22, 0.13);
+  --bulk: #8b5cf6;
+  --bulk-bg: rgba(139, 92, 246, 0.13);
+
+  /* Safe area insets */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
 }
 
-* {
-  box-sizing: border-box;
+/* ─── Reset & base ──────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  height: 100%;
+  background: var(--bg);
+  /* Do NOT set overflow: hidden — breaks HistoryList scroll on iOS */
 }
 
-html,
 body {
   margin: 0;
   padding: 0;
   height: 100%;
-  overflow: hidden;
-  background: #000;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color: var(--text-primary);
+  background: var(--bg);
 }
 
-/* Camera-style pulsing indicator */
-@keyframes pulse-ring {
-  0% { transform: scale(0.8); opacity: 1; }
-  100% { transform: scale(2); opacity: 0; }
+/* ─── Safe area utilities ───────────────────────────────────────────────────── */
+.pt-safe   { padding-top: var(--sat); }
+.pb-safe   { padding-bottom: var(--sab); }
+.pt-safe-4 { padding-top: calc(var(--sat) + 1rem); }
+.pt-safe-5 { padding-top: calc(var(--sat) + 1.25rem); }
+.pb-safe-6 { padding-bottom: calc(var(--sab) + 1.5rem); }
+.pb-safe-8 { padding-bottom: calc(var(--sab) + 2rem); }
+
+/* ─── Screen transitions ────────────────────────────────────────────────────── */
+@keyframes screenIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.screen-enter {
+  animation: screenIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.pulse-ring {
-  animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+/* ─── Card slide-up ─────────────────────────────────────────────────────────── */
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
 }
-
-/* Smooth card slide-up animation */
-@keyframes slide-up {
-  from { transform: translateY(100%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
 .slide-up {
-  animation: slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slideUp 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Category badge colors */
-.badge-recycling { background-color: var(--color-recycling); color: #fff; }
-.badge-garbage   { background-color: var(--color-garbage);   color: #fff; }
-.badge-compost   { background-color: var(--color-compost);   color: #000; }
-.badge-depot     { background-color: var(--color-depot);     color: #fff; }
-.badge-bulk      { background-color: var(--color-bulk);      color: #fff; }
+/* ─── Listening ripple rings ────────────────────────────────────────────────── */
+@keyframes ripple {
+  0%   { transform: scale(1);   opacity: 0.55; }
+  100% { transform: scale(3.2); opacity: 0; }
+}
+.ripple-1 { animation: ripple 1.8s ease-out infinite; }
+.ripple-2 { animation: ripple 1.8s ease-out 0.6s infinite; }
+
+/* ─── Audio waveform ────────────────────────────────────────────────────────── */
+@keyframes waveBar {
+  0%   { transform: scaleY(0.2); }
+  100% { transform: scaleY(1);   }
+}
+.wave-bar {
+  transform-origin: bottom center;
+  animation: waveBar 0.7s ease-in-out infinite alternate;
+}
+
+/* ─── Scan line ─────────────────────────────────────────────────────────────── */
+@keyframes scanLine {
+  0%   { top: 6%;  }
+  50%  { top: 94%; }
+  100% { top: 6%;  }
+}
+.scan-line {
+  animation: scanLine 2.5s ease-in-out infinite;
+}
+
+/* ─── Logo ambient ring ─────────────────────────────────────────────────────── */
+@keyframes logoPulse {
+  0%   { transform: scale(1);   opacity: 0.45; }
+  100% { transform: scale(2);   opacity: 0; }
+}
+.logo-pulse { animation: logoPulse 2.2s ease-out infinite; }
+.logo-pulse-delay { animation: logoPulse 2.2s ease-out 1.1s infinite; }
+
+/* ─── Spinner ───────────────────────────────────────────────────────────────── */
+@keyframes rotateSpin {
+  to { transform: rotate(360deg); }
+}
+.spinner { animation: rotateSpin 0.85s linear infinite; }

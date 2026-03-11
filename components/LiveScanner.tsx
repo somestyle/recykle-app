@@ -11,11 +11,61 @@ interface Props {
   onOpenHistory: () => void;
 }
 
-// Camera-facing mode: prefer back camera on mobile
 const VIDEO_CONSTRAINTS: MediaStreamConstraints = {
   video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
   audio: false,
 };
+
+// Heights for each waveform bar (7 bars, different starting heights)
+const WAVE_HEIGHTS = [35, 65, 50, 90, 55, 80, 40];
+const WAVE_DELAYS   = ['0s', '0.1s', '0.2s', '0s', '0.15s', '0.08s', '0.22s'];
+
+function Waveform({ active, speaking }: { active: boolean; speaking: boolean }) {
+  const color = speaking ? '#60a5fa' : '#4ade80'; // blue-400 | green-400
+  return (
+    <div
+      className="flex items-end gap-[3px] transition-opacity duration-300"
+      style={{ height: 28, opacity: active ? 1 : 0 }}
+    >
+      {WAVE_HEIGHTS.map((h, i) => (
+        <div
+          key={i}
+          className={active ? 'wave-bar' : ''}
+          style={{
+            width: 3,
+            height: `${h}%`,
+            borderRadius: 99,
+            backgroundColor: color,
+            animationDelay: WAVE_DELAYS[i],
+            animationDuration: `${0.6 + i * 0.07}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Corner bracket for viewfinder
+function Corner({ pos }: { pos: 'tl' | 'tr' | 'bl' | 'br' }) {
+  const top    = pos === 'tl' || pos === 'tr';
+  const left   = pos === 'tl' || pos === 'bl';
+  return (
+    <div
+      className="absolute h-7 w-7"
+      style={{
+        top:    top  ? 0 : 'auto',
+        bottom: !top ? 0 : 'auto',
+        left:   left ? 0 : 'auto',
+        right:  !left? 0 : 'auto',
+        borderTop:    top  ? '2px solid currentColor' : 'none',
+        borderBottom: !top ? '2px solid currentColor' : 'none',
+        borderLeft:   left ? '2px solid currentColor' : 'none',
+        borderRight:  !left? '2px solid currentColor' : 'none',
+        borderRadius: pos === 'tl' ? '4px 0 0 0' : pos === 'tr' ? '0 4px 0 0' : pos === 'bl' ? '0 0 0 4px' : '0 0 4px 0',
+      }}
+    />
+  );
+}
 
 export default function LiveScanner({ city, onOpenHistory }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -29,11 +79,10 @@ export default function LiveScanner({ city, onOpenHistory }: Props) {
   const [errorMsg, setErrorMsg] = useState('');
   const [cameraReady, setCameraReady] = useState(false);
 
-  // ─── Camera preview (always on) ───────────────────────────────────────────
+  // ─── Camera preview ───────────────────────────────────────────────────────
 
   useEffect(() => {
     let stream: MediaStream;
-
     async function initCamera() {
       try {
         stream = await navigator.mediaDevices.getUserMedia(VIDEO_CONSTRAINTS);
@@ -42,25 +91,19 @@ export default function LiveScanner({ city, onOpenHistory }: Props) {
           await videoRef.current.play();
           setCameraReady(true);
         }
-      } catch (err) {
-        console.error('Camera error:', err);
-        setErrorMsg('Camera access denied. Please allow camera permission and refresh.');
+      } catch {
+        setErrorMsg('Camera access denied. Allow camera permission and refresh.');
         setSessionState('error');
       }
     }
-
     initCamera();
-
-    return () => {
-      stream?.getTracks().forEach((t) => t.stop());
-    };
+    return () => { stream?.getTracks().forEach(t => t.stop()); };
   }, []);
 
-  // ─── Gemini Live session management ───────────────────────────────────────
+  // ─── Session management ───────────────────────────────────────────────────
 
   const startSession = useCallback(async () => {
     if (!videoRef.current || !cameraReady) return;
-
     setSessionState('starting');
     setErrorMsg('');
     setDisposal(null);
@@ -76,25 +119,13 @@ export default function LiveScanner({ city, onOpenHistory }: Props) {
         setDisposal(result);
         setThumbnail(thumb);
         setTranscript('');
-        // Save to history
-        addHistoryEntry({
-          timestamp: Date.now(),
-          city: city.displayName,
-          disposal: result,
-          thumbnail: thumb,
-        });
+        addHistoryEntry({ timestamp: Date.now(), city: city.displayName, disposal: result, thumbnail: thumb });
       },
-      onTranscriptUpdate: (text) => {
-        setTranscript(text);
-      },
-      onError: (msg) => {
-        setErrorMsg(msg);
-        setSessionState('error');
-      },
+      onTranscriptUpdate: (text) => setTranscript(text),
+      onError: (msg) => { setErrorMsg(msg); setSessionState('error'); },
     });
 
     clientRef.current = client;
-
     try {
       await client.start(city, videoRef.current);
     } catch (err) {
@@ -112,37 +143,41 @@ export default function LiveScanner({ city, onOpenHistory }: Props) {
     setDisposal(null);
   }, []);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      clientRef.current?.stop();
-    };
-  }, []);
+  useEffect(() => () => { clientRef.current?.stop(); }, []);
 
-  // ─── Derived UI state ─────────────────────────────────────────────────────
+  // ─── Derived state ────────────────────────────────────────────────────────
+
+  const isLive      = sessionState === 'live';
+  const isSpeaking  = geminiStatus === 'speaking';
+  const isListening = isLive && geminiStatus === 'ready';
+  const isActive    = isListening || isSpeaking;
+
+  // Viewfinder bracket color shifts with state
+  const bracketColor = isSpeaking
+    ? 'rgba(96,165,250,0.75)'   // blue when AI speaks
+    : isListening
+      ? 'rgba(74,222,128,0.75)' // green when listening
+      : 'rgba(255,255,255,0.35)'; // dim white at idle/starting
+
+  const statusDot = isSpeaking ? '#60a5fa' : isListening ? '#4ade80' : '#fbbf24';
 
   const statusLabel = (() => {
-    if (sessionState === 'idle') return 'Tap to start';
+    if (sessionState === 'idle') return null;
     if (sessionState === 'starting') return 'Connecting…';
-    if (sessionState === 'error') return 'Error';
-    switch (geminiStatus) {
-      case 'connected': return 'Setting up…';
-      case 'ready': return 'Listening…';
-      case 'speaking': return 'Recykle is speaking…';
-      default: return 'Live';
-    }
+    if (sessionState === 'error') return null;
+    if (isSpeaking)  return 'Recykle is speaking';
+    if (isListening) return 'Listening…';
+    return 'Setting up…';
   })();
 
-  const isLive = sessionState === 'live';
-  const isSpeaking = geminiStatus === 'speaking';
-  const isListening = isLive && geminiStatus === 'ready';
-
-  // ─── Render ───────────────────────────────────────────────────────────────
+  const cleanTranscript = transcript
+    .replace(/<disposal_data>[\s\S]*?<\/disposal_data>/g, '')
+    .trim();
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-black">
 
-      {/* ── Camera preview ── */}
+      {/* ── Camera ── */}
       <video
         ref={videoRef}
         autoPlay
@@ -151,120 +186,197 @@ export default function LiveScanner({ city, onOpenHistory }: Props) {
         className="absolute inset-0 h-full w-full object-cover"
       />
 
-      {/* ── Dark gradient overlays for UI readability ── */}
-      <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/70 to-transparent pointer-events-none" />
-      <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+      {/* ── Gradient overlays ── */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/75 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-black/90 to-transparent" />
 
       {/* ── Top bar ── */}
-      <div className="absolute inset-x-0 top-0 flex items-center justify-between px-4 pt-safe-top py-4 z-10">
+      <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-4 pt-safe-5">
         <div className="flex items-center gap-2">
-          <span className="text-xl font-bold text-white">♻️ Recykle</span>
-          <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-gray-300">
+          <span className="text-lg font-bold text-white">Recykle</span>
+          <span
+            className="rounded-full px-2 py-0.5 text-[11px] font-medium"
+            style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}
+          >
             {city.displayName}
           </span>
         </div>
+
+        {/* History button */}
         <button
           onClick={onOpenHistory}
-          className="rounded-full bg-white/10 px-3 py-1.5 text-sm text-white backdrop-blur-sm hover:bg-white/20 transition"
+          className="flex items-center gap-1.5 rounded-full py-1.5 pl-2.5 pr-3 text-sm font-medium text-white transition-all active:scale-95"
+          style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)' }}
         >
+          <svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5 shrink-0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="8" cy="8" r="6.5" />
+            <path d="M8 4.5V8l2.5 1.5" />
+          </svg>
           History
         </button>
       </div>
 
-      {/* ── Listening pulse indicator ── */}
+      {/* ── Viewfinder ── */}
+      {(isActive || sessionState === 'starting') && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="relative h-64 w-64" style={{ color: bracketColor, transition: 'color 0.4s ease' }}>
+            <Corner pos="tl" />
+            <Corner pos="tr" />
+            <Corner pos="bl" />
+            <Corner pos="br" />
+
+            {/* Scan line */}
+            {isActive && (
+              <div
+                className="scan-line absolute left-2 right-2"
+                style={{ height: 1, background: `linear-gradient(to right, transparent, ${bracketColor}, transparent)` }}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Listening ripple (replaces the tiny center dot) ── */}
       {isListening && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-          <div className="relative h-4 w-4">
-            <div className="pulse-ring absolute inset-0 rounded-full bg-green-400 opacity-75" />
-            <div className="relative h-4 w-4 rounded-full bg-green-500" />
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          {/* Rings expand from center — behind the viewfinder */}
+          <div className="ripple-1 absolute h-12 w-12 rounded-full bg-green-400/20" />
+          <div className="ripple-2 absolute h-12 w-12 rounded-full bg-green-400/20" />
+        </div>
+      )}
+
+      {/* ── Transcript bubble — floats above FAB, not above top bar ── */}
+      {cleanTranscript && !disposal && (
+        <div
+          className="absolute inset-x-6 z-20 pointer-events-none"
+          style={{ bottom: 200 }}
+        >
+          <div
+            className="mx-auto max-w-xs rounded-2xl px-4 py-3"
+            style={{
+              background: 'rgba(0,0,0,0.72)',
+              backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            <p className="text-sm leading-relaxed text-white/85">{cleanTranscript}</p>
           </div>
         </div>
       )}
 
-      {/* ── Transcript bubble ── */}
-      {transcript && !disposal && (
-        <div className="absolute inset-x-4 top-24 z-20 flex justify-center pointer-events-none">
-          <div className="max-w-sm rounded-2xl bg-black/70 px-4 py-3 backdrop-blur-md">
-            <p className="text-sm text-white/80 leading-relaxed">
-              {/* Hide the <disposal_data> block from the transcript */}
-              {transcript.replace(/<disposal_data>[\s\S]*?<\/disposal_data>/g, '').trim()}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* ── Result card overlay ── */}
+      {/* ── Result card ── */}
       {disposal && (
         <ResultCard
           result={disposal}
           thumbnail={thumbnail}
           city={city.displayName}
-          onDismiss={() => {
-            setDisposal(null);
-            setThumbnail(undefined);
-          }}
+          onDismiss={() => { setDisposal(null); setThumbnail(undefined); }}
         />
       )}
 
       {/* ── Bottom controls ── */}
-      <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-4 pb-safe-bottom pb-8 px-6">
+      <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col items-center pb-safe-8 px-6">
 
-        {/* Status label */}
-        <div className="flex items-center gap-2">
-          {isLive && (
+        {/* Status pill */}
+        {statusLabel && (
+          <div
+            className="mb-5 flex items-center gap-2 rounded-full px-3.5 py-1.5"
+            style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
             <span
-              className={`h-2 w-2 rounded-full ${
-                isSpeaking ? 'bg-blue-400' : isListening ? 'bg-green-400' : 'bg-yellow-400'
-              }`}
-              style={isListening ? { boxShadow: '0 0 6px #4ade80' } : undefined}
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ backgroundColor: statusDot, boxShadow: `0 0 6px ${statusDot}` }}
+            />
+            <span className="text-xs font-medium text-white/80">{statusLabel}</span>
+            <Waveform active={isActive} speaking={isSpeaking} />
+          </div>
+        )}
+
+        {/* Error */}
+        {errorMsg && (
+          <div
+            className="mb-4 max-w-xs rounded-xl px-4 py-2.5 text-center text-sm text-red-300"
+            style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)' }}
+          >
+            {errorMsg}
+          </div>
+        )}
+
+        {/* FAB */}
+        <div className="relative">
+          {/* Outer glow ring when live */}
+          {isLive && (
+            <div
+              className="absolute inset-0 rounded-full opacity-40"
+              style={{ transform: 'scale(1.35)', background: isSpeaking ? 'rgba(96,165,250,0.3)' : 'rgba(34,197,94,0.3)', filter: 'blur(10px)' }}
             />
           )}
-          <span className="text-sm text-white/70">{statusLabel}</span>
+
+          {sessionState === 'idle' || sessionState === 'error' ? (
+            <button
+              onClick={startSession}
+              disabled={!cameraReady}
+              className="relative flex h-[72px] w-[72px] items-center justify-center rounded-full transition-all active:scale-95 disabled:opacity-30"
+              style={{
+                background: 'linear-gradient(145deg, #22c55e, #16a34a)',
+                boxShadow: '0 8px 28px rgba(34,197,94,0.45)',
+              }}
+              aria-label="Start session"
+            >
+              {/* Mic icon */}
+              <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7 text-white" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                <line x1="12" y1="19" x2="12" y2="22" />
+                <line x1="8" y1="22" x2="16" y2="22" />
+              </svg>
+            </button>
+          ) : (
+            <button
+              onClick={stopSession}
+              className="relative flex h-[72px] w-[72px] items-center justify-center rounded-full transition-all active:scale-95"
+              style={{
+                background: 'rgba(239,68,68,0.15)',
+                backdropFilter: 'blur(12px)',
+                border: '1.5px solid rgba(239,68,68,0.4)',
+                boxShadow: '0 4px 20px rgba(239,68,68,0.2)',
+              }}
+              aria-label="Stop session"
+            >
+              <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6 text-red-400" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="6" y="6" width="12" height="12" rx="2" />
+              </svg>
+            </button>
+          )}
         </div>
 
-        {/* Error message */}
-        {errorMsg && (
-          <p className="text-center text-sm text-red-400 max-w-xs">{errorMsg}</p>
-        )}
-
-        {/* Main action button */}
-        {sessionState === 'idle' || sessionState === 'error' ? (
-          <button
-            onClick={startSession}
-            disabled={!cameraReady}
-            className="flex h-20 w-20 items-center justify-center rounded-full bg-green-500 text-3xl shadow-xl shadow-green-500/40 transition-all hover:bg-green-400 active:scale-95 disabled:opacity-40"
-          >
-            🎙️
-          </button>
-        ) : (
-          <button
-            onClick={stopSession}
-            className="flex h-20 w-20 items-center justify-center rounded-full bg-red-500/80 text-3xl shadow-xl transition-all hover:bg-red-500 active:scale-95 backdrop-blur-sm"
-          >
-            ⏹
-          </button>
-        )}
-
-        {/* Hint text */}
-        {sessionState === 'idle' && cameraReady && (
-          <p className="text-center text-xs text-white/40 max-w-xs">
-            Point your camera at any item and ask &ldquo;What do I do with this?&rdquo;
-          </p>
-        )}
-
-        {isLive && !isSpeaking && !disposal && (
-          <p className="text-center text-xs text-white/40 max-w-xs">
-            Speak naturally — Recykle can hear you
-          </p>
-        )}
+        {/* Hint */}
+        <p
+          className="mt-4 text-center text-xs transition-opacity"
+          style={{ color: 'rgba(255,255,255,0.35)', minHeight: 16 }}
+        >
+          {sessionState === 'idle' && cameraReady && 'Point camera at an item and ask'}
+          {isListening && 'Speak naturally — Recykle can hear you'}
+          {isSpeaking && 'Playing response…'}
+        </p>
       </div>
 
-      {/* ── Starting overlay ── */}
+      {/* ── Connecting overlay ── */}
       {sessionState === 'starting' && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="mb-4 animate-spin text-4xl">♻️</div>
-          <p className="text-white">Connecting to Recykle…</p>
-          <p className="mt-1 text-sm text-gray-400">Starting Gemini Live session</p>
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }}>
+          <div
+            className="mb-5 flex h-16 w-16 items-center justify-center rounded-full"
+            style={{ background: 'rgba(34,197,94,0.12)', border: '1.5px solid rgba(34,197,94,0.3)' }}
+          >
+            <svg
+              viewBox="0 0 24 24" fill="none" className="spinner h-7 w-7 text-green-400"
+              stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            >
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+            </svg>
+          </div>
+          <p className="text-base font-medium text-white">Starting Recykle…</p>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>Connecting to Gemini Live</p>
         </div>
       )}
     </div>
