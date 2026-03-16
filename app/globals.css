@@ -54,6 +54,7 @@ body {
   color: var(--text-primary);
   background: var(--bg);
   color-scheme: light;
+  overscroll-behavior: none;
 }
 
 /* dvh viewport utilities — fixes mobile Chrome address/nav bar overlap */

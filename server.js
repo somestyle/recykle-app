@@ -128,11 +128,12 @@ async function handleGeminiWebSocket(ws) {
             processGeminiMessage(message);
           },
           onerror(error) {
-            console.error('[Recykle] Gemini error:', error);
+            console.error('[Recykle] Gemini error:', JSON.stringify({ message: error.message, code: error.code, type: error.type }));
             sendToClient({ type: 'error', message: String(error.message || error) });
           },
-          onclose() {
-            console.log('[Recykle] Gemini session closed');
+          onclose(event) {
+            console.log('[Recykle] Gemini session closed — code:', event?.code, 'reason:', event?.reason, 'wasClean:', event?.wasClean);
+            sendToClient({ type: 'error', message: `Session closed (code ${event?.code}): ${event?.reason || 'unknown reason'}` });
           },
         },
         config: {
