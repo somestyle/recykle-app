@@ -163,6 +163,12 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
   const clientRef = useRef<GeminiLiveClient | null>(null);
   const autoStartedRef = useRef(false);
 
+  // Auto-reconnect on transient Gemini errors (e.g. code 1008)
+  const retryCountRef = useRef(0);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Always-current reference to startSession, used by the reconnect timer
+  const startSessionRef = useRef<() => Promise<void>>(async () => {});
+
   // Derived
   const isLive = sessionState === 'live';
   const isSpeaking = geminiStatus === 'speaking';
@@ -191,6 +197,11 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
     return () => {
       streamRef.current?.getTracks().forEach(t => t.stop());
     };
+  }, []);
+
+  // ── Cleanup reconnect timer on unmount ──────────────────────────────────────
+  useEffect(() => () => {
+    if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
   }, []);
 
   // ── Auto-start session when camera is ready ─────────────────────────────────
@@ -246,9 +257,12 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
     if ((sessionState !== 'idle' && sessionState !== 'error') || !videoRef.current || !cameraReady) return;
     setSessionState('starting');
     setErrorMsg(null);
-    setCaptions([]);
-    assistantBufRef.current = '';
-    userBufRef.current = '';
+    // Only clear captions on a fresh user-initiated start, not on silent reconnects
+    if (retryCountRef.current === 0) {
+      setCaptions([]);
+      assistantBufRef.current = '';
+      userBufRef.current = '';
+    }
 
     const client = new GeminiLiveClient({
       onStatusChange: (status) => {
@@ -294,21 +308,51 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
         if (finished) userBufRef.current = '';
       },
       onError: (msg) => {
-        setErrorMsg(msg);
-        setSessionState('error');
+        clientRef.current = null;
+        const MAX_RETRIES = 2;
+        if (retryCountRef.current < MAX_RETRIES) {
+          // Silent auto-reconnect — user never sees the error
+          retryCountRef.current += 1;
+          console.warn(`[Recykle] Session error (attempt ${retryCountRef.current}/${MAX_RETRIES}), reconnecting in 2s:`, msg);
+          setSessionState('idle');
+          setGeminiStatus('disconnected');
+          reconnectTimerRef.current = setTimeout(() => startSessionRef.current(), 2000);
+        } else {
+          // All retries exhausted — surface the error to the user
+          retryCountRef.current = 0;
+          setErrorMsg(msg);
+          setSessionState('error');
+        }
       },
     });
 
     clientRef.current = client;
     try {
       await client.start(city, videoRef.current);
+      retryCountRef.current = 0; // successful connect — reset retry counter
     } catch (err) {
-      setErrorMsg((err as Error).message);
-      setSessionState('error');
+      clientRef.current = null;
+      const MAX_RETRIES = 2;
+      const msg = (err as Error).message;
+      if (retryCountRef.current < MAX_RETRIES) {
+        retryCountRef.current += 1;
+        console.warn(`[Recykle] Start failed (attempt ${retryCountRef.current}/${MAX_RETRIES}), reconnecting in 2s:`, msg);
+        setSessionState('idle');
+        reconnectTimerRef.current = setTimeout(() => startSessionRef.current(), 2000);
+      } else {
+        retryCountRef.current = 0;
+        setErrorMsg(msg);
+        setSessionState('error');
+      }
     }
   }, [sessionState, city, cameraReady, upsertCaption, triggerEmoji]);
 
+  // ── Keep startSessionRef current (for reconnect timer closures) ──────────────
+  useEffect(() => { startSessionRef.current = startSession; }, [startSession]);
+
   const stopSession = useCallback(() => {
+    if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+    retryCountRef.current = 0;
     clientRef.current?.stop();
     clientRef.current = null;
     setSessionState('idle');

@@ -148,7 +148,7 @@ async function handleGeminiWebSocket(ws) {
 
     console.log(`[Recykle] Setting up Gemini session for ${setupMsg.city}`);
 
-    const ai = new GoogleGenAI({ apiKey, httpOptions: { apiVersion: 'v1beta1' } });
+    const ai = new GoogleGenAI({ apiKey });
 
     try {
       geminiSession = await ai.live.connect({
