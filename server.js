@@ -17,7 +17,7 @@ const handle = app.getRequestHandler();
 
 // ─── Gemini Live API integration ──────────────────────────────────────────────
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash-live-001';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-native-audio-latest';
 
 function loadRecyclingRules(cityKey) {
   const filePath = path.join(__dirname, 'lib', 'recycling-rules', `${cityKey}.json`);
@@ -137,7 +137,10 @@ async function handleGeminiWebSocket(ws) {
           },
         },
         config: {
-          responseModalities: ['AUDIO', 'TEXT'],
+          // Native audio model only supports AUDIO modality — TEXT causes 1007.
+          // We get transcription via outputAudioTranscription instead.
+          responseModalities: ['AUDIO'],
+          outputAudioTranscription: {},
           systemInstruction: systemPrompt,
           speechConfig: {
             voiceConfig: {
@@ -171,34 +174,56 @@ async function handleGeminiWebSocket(ws) {
       return;
     }
 
-    // Handle model turn with parts
-    if (content.modelTurn?.parts) {
+    // Handle model turn with parts (audio chunks)
+    if (content.modelTurn && content.modelTurn.parts) {
       for (const part of content.modelTurn.parts) {
-        // Audio response
+        // Audio response (native audio model returns audio here)
         if (part.inlineData) {
           const { mimeType, data } = part.inlineData;
           if (mimeType && mimeType.startsWith('audio/')) {
             sendToClient({ type: 'audio', data, mimeType });
           }
         }
-        // Text response
+        // Text parts (only if TEXT modality is enabled — not used with native audio)
         if (part.text) {
           textBuffer += part.text;
           sendToClient({ type: 'text', text: part.text });
-
-          // Try to extract disposal data from accumulated text
           const disposal = extractDisposalData(textBuffer);
           if (disposal) {
             sendToClient({ type: 'disposal', ...disposal });
-            textBuffer = ''; // Reset after extraction
+            textBuffer = '';
           }
+        }
+      }
+    }
+
+    // Output transcription — from outputAudioTranscription config.
+    // This gives us the text of what Gemini spoke, so we can parse <disposal_data>.
+    if (content.outputTranscription) {
+      const t = content.outputTranscription;
+      if (t.text) {
+        textBuffer += t.text;
+        sendToClient({ type: 'text', text: t.text });
+        const disposal = extractDisposalData(textBuffer);
+        if (disposal) {
+          sendToClient({ type: 'disposal', ...disposal });
+          textBuffer = '';
+        }
+      }
+      if (t.finished) {
+        // Transcription complete — final disposal data check
+        if (textBuffer) {
+          const disposal = extractDisposalData(textBuffer);
+          if (disposal) {
+            sendToClient({ type: 'disposal', ...disposal });
+          }
+          textBuffer = '';
         }
       }
     }
 
     // Turn complete
     if (content.turnComplete) {
-      // One final check for disposal data in the full buffer
       if (textBuffer) {
         const disposal = extractDisposalData(textBuffer);
         if (disposal) {
@@ -231,8 +256,9 @@ async function handleGeminiWebSocket(ws) {
       case 'audio':
         if (geminiSession && msg.data) {
           try {
+            // SDK v1.x: use `audio` field (not `media`) for PCM audio
             await geminiSession.sendRealtimeInput({
-              media: {
+              audio: {
                 data: msg.data,
                 mimeType: 'audio/pcm;rate=16000',
               },
@@ -246,8 +272,9 @@ async function handleGeminiWebSocket(ws) {
       case 'video':
         if (geminiSession && msg.data) {
           try {
+            // SDK v1.x: use `video` field (not `media`) for JPEG frames
             await geminiSession.sendRealtimeInput({
-              media: {
+              video: {
                 data: msg.data,
                 mimeType: 'image/jpeg',
               },
