@@ -84,11 +84,12 @@ button, [role="button"] {
 
 /* ─── Screen transitions ────────────────────────────────────────────────────── */
 @keyframes screenIn {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 .screen-enter {
-  animation: screenIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: screenIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
 }
 
 /* ─── Card slide-up ─────────────────────────────────────────────────────────── */
@@ -98,6 +99,15 @@ button, [role="button"] {
 }
 .slide-up {
   animation: slideUp 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ─── Card pop-in (centered modal) ─────────────────────────────────────────── */
+@keyframes cardIn {
+  from { opacity: 0; transform: scale(0.94) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+.card-in {
+  animation: cardIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* ─── Listening ripple rings ────────────────────────────────────────────────── */
@@ -155,10 +165,17 @@ button, [role="button"] {
   user-select: none;
 }
 
+/* ─── Card overlay fade ─────────────────────────────────────────────────────── */
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 /* ─── Reduced motion support ────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .screen-enter { animation: none; opacity: 1; transform: none; }
   .slide-up     { animation: none; transform: none; }
+  .card-in      { animation: none; opacity: 1; transform: none; }
   .logo-pulse, .logo-pulse-delay { animation: none; opacity: 0; }
   .ripple-1, .ripple-2 { animation: none; opacity: 0; }
   .scan-line    { animation: none; top: 50%; }

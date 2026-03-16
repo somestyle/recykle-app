@@ -93,7 +93,7 @@ export type ServerMessage =
   | { type: 'connected' }
   | { type: 'ready' } // Gemini session established
   | { type: 'audio'; data: string; mimeType: string } // base64 PCM16 response
-  | { type: 'text'; text: string }
+  | { type: 'text'; text: string; isResponse?: boolean }
   | { type: 'disposal'; item: string; material: string; category: DisposalCategory; explanation: string; tip: string | null }
   | { type: 'turnComplete' }
   | { type: 'interrupted' }

@@ -10,7 +10,7 @@ export type GeminiLiveStatus =
 
 export interface GeminiLiveCallbacks {
   onStatusChange: (status: GeminiLiveStatus) => void;
-  onDisposalResult: (result: DisposalResult, thumbnail?: string) => void;
+  onDisposalResult: (result: DisposalResult, thumbnail?: string, thinkingText?: string) => void;
   onTranscriptUpdate: (text: string) => void;
   onUserTranscript?: (text: string, finished: boolean) => void;
   onError: (message: string) => void;
@@ -28,7 +28,10 @@ export class GeminiLiveClient {
   private nextPlayTime = 0;
   private status: GeminiLiveStatus = 'disconnected';
   private callbacks: GeminiLiveCallbacks;
-  private currentTranscript = '';
+  private thinkingTranscript = '';    // pre-disposal text (not shown in caption)
+  private responseTranscript = '';    // post-disposal spoken response text
+  private disposalFiredThisTurn = false;
+  private streamingPaused = false;
   private lastThumbnail: string | undefined;
 
   constructor(callbacks: GeminiLiveCallbacks) {
@@ -88,6 +91,22 @@ export class GeminiLiveClient {
     this.setStatus('disconnected');
   }
 
+  pause(): void {
+    this.streamingPaused = true;
+  }
+
+  resume(): void {
+    this.streamingPaused = false;
+  }
+
+  // Send a "Check This" text query — triggers Gemini to identify the current camera frame
+  sendCheckThis(): void {
+    this.sendMessage({
+      type: 'clientText',
+      text: 'What is this item and how should I dispose of it? Please identify it carefully.',
+    });
+  }
+
   // ─── Internal: WebSocket message handling ────────────────────────────────────
 
   private handleServerMessage(msg: ServerMessage): void {
@@ -108,37 +127,55 @@ export class GeminiLiveClient {
         break;
 
       case 'text':
-        this.currentTranscript += msg.text;
-        this.callbacks.onTranscriptUpdate(this.currentTranscript);
+        if (msg.isResponse) {
+          // Post-disposal spoken response — show in caption
+          this.responseTranscript += msg.text;
+          this.callbacks.onTranscriptUpdate(this.responseTranscript);
+        } else {
+          // Pre-disposal thinking/analysis — accumulate but don't show in caption
+          this.thinkingTranscript += msg.text;
+        }
         break;
 
-      case 'disposal':
+      case 'disposal': {
+        this.disposalFiredThisTurn = true;
+        const d = msg as typeof msg & { address?: { name: string; address: string; note: string } };
         this.callbacks.onDisposalResult(
           {
-            item: msg.item,
-            material: msg.material,
-            category: msg.category,
-            explanation: msg.explanation,
-            tip: msg.tip,
+            item: d.item,
+            material: d.material,
+            category: d.category,
+            explanation: d.explanation,
+            tip: d.tip,
+            ...(d.address ? { address: d.address } : {}),
           },
-          this.lastThumbnail
+          this.lastThumbnail,
+          this.thinkingTranscript || undefined,
         );
-        this.currentTranscript = '';
+        this.thinkingTranscript = '';
+        this.responseTranscript = '';
         break;
+      }
 
       case 'turnComplete':
+        // If no disposal fired (conversational response), show accumulated text
+        if (!this.disposalFiredThisTurn && this.thinkingTranscript.trim()) {
+          this.callbacks.onTranscriptUpdate(this.thinkingTranscript);
+        }
+        this.thinkingTranscript = '';
+        this.responseTranscript = '';
+        this.disposalFiredThisTurn = false;
         if (this.status === 'speaking') {
-          // Revert to ready once audio drains
           this.onAudioDrained(() => this.setStatus('ready'));
         }
-        this.currentTranscript = '';
         break;
 
       case 'interrupted':
-        // User started speaking — clear audio queue
+        this.thinkingTranscript = '';
+        this.responseTranscript = '';
+        this.disposalFiredThisTurn = false;
         this.clearAudioQueue();
         this.setStatus('ready');
-        this.currentTranscript = '';
         break;
 
       case 'userTranscript':
@@ -177,6 +214,7 @@ export class GeminiLiveClient {
     this.workletNode.port.onmessage = (event: MessageEvent<{ pcm16: Int16Array }>) => {
       if (this.ws?.readyState !== WebSocket.OPEN) return;
       if (this.status !== 'ready' && this.status !== 'speaking') return;
+      if (this.streamingPaused) return;
 
       const { pcm16 } = event.data;
       const base64 = this.int16ToBase64(pcm16);
@@ -199,6 +237,7 @@ export class GeminiLiveClient {
     this.videoInterval = setInterval(() => {
       if (!this.videoElement || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
       if (this.status !== 'ready' && this.status !== 'speaking') return;
+      if (this.streamingPaused) return;
 
       const video = this.videoElement;
       if (video.videoWidth === 0 || video.videoHeight === 0) return;

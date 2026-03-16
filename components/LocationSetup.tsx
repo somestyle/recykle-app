@@ -6,6 +6,7 @@ import { resolveCityFromPostal } from '@/lib/types';
 
 interface Props {
   onCitySelected: (city: CityInfo) => void;
+  onViewNotes?: () => void;
 }
 
 const DEMO_CITIES = [
@@ -14,7 +15,7 @@ const DEMO_CITIES = [
   { label: 'San Francisco', region: 'CA · USA',    postal: '94102',   country: 'US' },
 ];
 
-export default function LocationSetup({ onCitySelected }: Props) {
+export default function LocationSetup({ onCitySelected, onViewNotes }: Props) {
   const [postal, setPostal] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -205,12 +206,32 @@ export default function LocationSetup({ onCitySelected }: Props) {
             </button>
           ))}
         </div>
+
+        {/* Notes shortcut */}
+        {onViewNotes && (
+          <button
+            onClick={onViewNotes}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-medium transition-all active:scale-[0.98]"
+            style={{ background: 'var(--surface)', border: '1.5px solid var(--border)', color: 'var(--text-secondary)' }}
+          >
+            <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 2.5h10a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-13a1 1 0 0 1 1-1z" />
+              <path d="M7 7h6M7 10h6M7 13h4" />
+            </svg>
+            View your Notes
+          </button>
+        )}
       </div>
 
       {/* Footer */}
-      <p className="absolute bottom-8 text-center text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
-        Gemini Live API · Google Cloud
-      </p>
+      <div className="absolute bottom-6 flex flex-col items-center gap-1">
+        <p className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+          Gemini Live API · Google Cloud
+        </p>
+        <p className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+          Built for a better world ❤️
+        </p>
+      </div>
     </div>
   );
 }

@@ -42,7 +42,7 @@ gcloud run deploy "${SERVICE_NAME}" \
   --region "${REGION}" \
   --allow-unauthenticated \
   --set-env-vars "GEMINI_API_KEY=${GEMINI_API_KEY}" \
-  --set-env-vars "GEMINI_MODEL=gemini-2.0-flash-live-001" \
+  --set-env-vars "GEMINI_MODEL=gemini-2.5-flash-native-audio-latest" \
   --memory 512Mi \
   --cpu 1 \
   --min-instances 0 \

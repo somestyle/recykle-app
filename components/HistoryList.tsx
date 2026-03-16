@@ -141,7 +141,7 @@ export default function HistoryList({ onBack }: Props) {
             </svg>
           </button>
 
-          <h1 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Scan History</h1>
+          <h1 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Notes</h1>
 
           {/* Clear */}
           {all.length > 0 ? (
@@ -212,12 +212,12 @@ export default function HistoryList({ onBack }: Props) {
               }
             </div>
             <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
-              {filter === 'All' ? 'No scans yet' : `No ${filter} items`}
+              {filter === 'All' ? 'No notes yet' : `No ${filter} items`}
             </p>
             <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
               {filter === 'All'
-                ? "Scan items with Recykle and they'll appear here"
-                : `You haven't scanned any ${filter.toLowerCase()} items yet`}
+                ? 'Special disposal items (depot drop-off, bulk) are saved here automatically. Tap "Save to Notes" on any result to add it.'
+                : `No ${filter.toLowerCase()} items saved to notes yet`}
             </p>
           </div>
         ) : (
