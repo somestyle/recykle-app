@@ -10,7 +10,7 @@ REGION="${2:-us-central1}"
 SERVICE_NAME="recykle-app"
 AR_REPO="recykle"
 IMAGE_NAME="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/${SERVICE_NAME}"
-GEMINI_MODEL="gemini-live-2.5-flash-native-audio"
+GEMINI_MODEL="gemini-2.5-flash-native-audio-latest"
 
 if [ -z "$PROJECT_ID" ]; then
   echo "Error: No GCP project ID provided and none set in gcloud config."

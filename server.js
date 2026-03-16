@@ -17,7 +17,7 @@ const handle = app.getRequestHandler();
 
 // ─── Gemini Live API integration ──────────────────────────────────────────────
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-live-2.5-flash-native-audio';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-native-audio-latest';
 
 function loadRecyclingRules(cityKey) {
   const filePath = path.join(__dirname, 'lib', 'recycling-rules', `${cityKey}.json`);

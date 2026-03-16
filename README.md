@@ -240,8 +240,8 @@ Built for the **[Gemini Live Agent Challenge](https://geminiliveagentchallenge.d
 
 | Requirement | Status | Detail |
 |---|---|---|
-| Gemini 2.5 series model | ✅ | `gemini-live-2.5-flash-native-audio` |
-| Google GenAI SDK | ✅ | `@google/genai` v1.45+, initialized with `apiVersion: 'v1beta1'` |
+| Gemini 2.5 series model | ✅ | `gemini-2.5-flash-native-audio-latest` |
+| Google GenAI SDK | ✅ | `@google/genai` v1.45+ |
 | Google Cloud Run deployment | ✅ | Managed serverless container, auto-scales 0 to 10 instances |
 | Real-time audio via Live API | ✅ | AudioWorklet at 16 kHz PCM16, bidirectional streaming |
 | Real-time vision via Live API | ✅ | Camera JPEG frames at 1 fps, simultaneous with audio |

@@ -29,7 +29,7 @@ Cloud Run: server.js (Node.js + ws)
          |
          | ai.live.connect()  (v1beta1)
          v
-Gemini Live API — gemini-live-2.5-flash-native-audio
+Gemini Live API — gemini-2.5-flash-native-audio-latest
   - Processes audio + video simultaneously
   - Calls record_disposal(item, material, category, explanation, tip)
   - Returns spoken audio response (PCM16 at 24 kHz)
@@ -130,7 +130,7 @@ Hosted on **Google Cloud Run** (managed, serverless containers).
 ```
 gcloud run deploy recykle-app \
   --image REGION-docker.pkg.dev/PROJECT/recykle/recykle-app \
-  --set-env-vars GEMINI_API_KEY=...,GEMINI_MODEL=gemini-live-2.5-flash-native-audio \
+  --set-env-vars GEMINI_API_KEY=...,GEMINI_MODEL=gemini-2.5-flash-native-audio-latest \
   --memory 512Mi --cpu 1 --min-instances 0 --max-instances 10
 ```
 
