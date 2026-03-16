@@ -30,17 +30,19 @@ A result card appears on screen with the Garbage category and a preparation tip.
 
 ```
 User (phone camera + voice)
-        ↓
+        |
 Browser — Next.js (camera preview, AudioWorklet mic capture)
-        ↓  WebSocket /ws/gemini
-server.js (Node.js WebSocket proxy)
-        ↓  ai.live.connect()
-Gemini Live API — gemini-2.0-flash-live-001
-        ↓  audio response + <disposal_data> JSON
-server.js — parses structured result, forwards to browser
-        ↓
-Result Card (UI overlay) + Voice Playback + History (localStorage)
+        |  WebSocket /ws/gemini
+server.js (Node.js + ws — Google Cloud Run)
+        |  ai.live.connect()  [v1beta1]
+Gemini Live API — gemini-live-2.5-flash-native-audio
+        |  toolCall: record_disposal() + audio response (PCM16)
+server.js — forwards disposal data + audio to browser
+        |
+Result Card (UI overlay) + Voice Playback + Notes (localStorage)
 ```
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full Mermaid sequence diagram.
 
 ---
 
@@ -48,7 +50,7 @@ Result Card (UI overlay) + Voice Playback + History (localStorage)
 
 | Layer | Technology |
 |---|---|
-| AI | Gemini Live API (`gemini-2.0-flash-live-001`) |
+| AI | Gemini Live API (`gemini-live-2.5-flash-native-audio`) |
 | AI SDK | Google GenAI SDK (`@google/genai`) |
 | Frontend | Next.js 15, React 19, Tailwind CSS |
 | Backend | Node.js custom server with WebSocket proxy (`ws`) |
@@ -115,12 +117,11 @@ open http://localhost:3000
 ### Prerequisites
 - [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) (`gcloud` CLI)
 - A GCP project with billing enabled
-- The following APIs enabled in your project:
-  ```bash
-  gcloud services enable run.googleapis.com
-  gcloud services enable cloudbuild.googleapis.com
-  gcloud services enable containerregistry.googleapis.com
-  ```
+- The `deploy.sh` script enables all required APIs automatically:
+  - `run.googleapis.com`
+  - `artifactregistry.googleapis.com`
+  - `cloudbuild.googleapis.com`
+  - `aiplatform.googleapis.com`
 
 ### Deploy
 
@@ -137,10 +138,11 @@ export GEMINI_API_KEY=your_key_here
 ```
 
 The deploy script:
-1. Builds a Docker image using `gcloud builds submit`
-2. Pushes it to Google Container Registry
-3. Deploys to Cloud Run with 512Mi RAM, 1 CPU, auto-scaling 0–10 instances
-4. Sets `GEMINI_API_KEY` as a secret environment variable
+1. Enables all required Google Cloud APIs
+2. Creates an Artifact Registry Docker repository (`recykle`) if it does not exist
+3. Builds the container image via Cloud Build and pushes to Artifact Registry
+4. Deploys to Cloud Run with 512 Mi RAM, 1 CPU, auto-scaling 0 to 10 instances
+5. Sets `GEMINI_API_KEY` and `GEMINI_MODEL` as environment variables
 
 ### Cloud Run notes
 - Minimum instances: 0 (cold starts ~3s on first request)
@@ -203,7 +205,7 @@ recykle-app/
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `GEMINI_API_KEY` | Yes | — | Gemini API key from [aistudio.google.com](https://aistudio.google.com/) |
-| `GEMINI_MODEL` | No | `gemini-2.0-flash-live-001` | Gemini model to use |
+| `GEMINI_MODEL` | No | `gemini-live-2.5-flash-native-audio` | Gemini model to use |
 | `PORT` | No | `3000` (dev) / `8080` (Cloud Run) | Server port |
 
 ---
@@ -211,16 +213,17 @@ recykle-app/
 ## Findings & Learnings
 
 ### What worked well
-- **Gemini Live API** handles simultaneous audio + video streams with almost no latency — the real-time feel is genuinely impressive to demo live
-- Injecting city recycling rules directly into the system prompt is a simple, effective way to ground the AI without a vector database or RAG pipeline
-- The AudioWorklet + custom WebSocket proxy architecture keeps the API key server-side while still enabling real-time bidirectional streaming
-- Interruption handling is built into the Live API — no custom logic needed to handle users speaking mid-response
+- **Gemini Live API** handles simultaneous audio + video streams with almost no latency. The real-time feel is genuinely impressive to demo live.
+- Injecting city recycling rules directly into the system prompt is a simple, effective way to ground the AI without a vector database or RAG pipeline.
+- The AudioWorklet + custom WebSocket proxy architecture keeps the API key server-side while still enabling real-time bidirectional streaming.
+- Interruption handling is built into the Live API. No custom logic needed to handle users speaking mid-response.
+- Using Gemini function calling (`record_disposal` tool) instead of XML text parsing gives reliable structured output regardless of transcription order.
 
 ### Challenges
-- The `@google/genai` SDK for Live API was evolving rapidly during development — call signatures changed between minor versions
-- AudioWorklet downsampling from the browser's native sample rate (48 kHz) to Gemini's required 16 kHz required careful linear interpolation to avoid artifacts
-- WebSocket upgrade handling in Next.js required a custom `server.js` — the standard Next.js server doesn't support WebSocket upgrades out of the box
-- Black plastic container disposal is a genuinely surprising result that makes for a great demo moment — most people assume plastic is always recyclable
+- The `@google/genai` SDK for Live API was evolving rapidly during development. Call signatures changed between minor versions.
+- AudioWorklet downsampling from the browser's native sample rate (48 kHz) to Gemini's required 16 kHz required careful linear interpolation to avoid artifacts.
+- WebSocket upgrade handling in Next.js required a custom `server.js`. The standard Next.js server does not support WebSocket upgrades out of the box.
+- Black plastic container disposal is a genuinely surprising result for most people. That moment is the strongest part of the demo.
 
 ### If we had more time
 - Add Vertex AI API endpoint instead of AI Studio key for production use
@@ -231,19 +234,26 @@ recykle-app/
 
 ---
 
-## Hackathon Submission
+## Hackathon Requirements Checklist
+
+Built for the **[Gemini Live Agent Challenge](https://geminiliveagentchallenge.devpost.com/)** — Devpost hackathon, March 2026.
+
+| Requirement | Status | Detail |
+|---|---|---|
+| Gemini 2.5 series model | ✅ | `gemini-live-2.5-flash-native-audio` |
+| Google GenAI SDK | ✅ | `@google/genai` v1.45+, initialized with `apiVersion: 'v1beta1'` |
+| Google Cloud Run deployment | ✅ | Managed serverless container, auto-scales 0 to 10 instances |
+| Real-time audio via Live API | ✅ | AudioWorklet at 16 kHz PCM16, bidirectional streaming |
+| Real-time vision via Live API | ✅ | Camera JPEG frames at 1 fps, simultaneous with audio |
+| Automated deployment script | ✅ | `deploy.sh` enables APIs, creates Artifact Registry repo, builds and deploys |
+| Architecture diagram | ✅ | `architecture.png` + `ARCHITECTURE.md` with Mermaid sequence diagram |
+| Public GitHub repository | ✅ | github.com/somestyle/recykle-app |
+
+### Hackathon Submission Details
 
 - **Category:** Live Agents
 - **Event:** [Gemini Live Agent Challenge — Devpost](https://geminiliveagentchallenge.devpost.com/)
 - **Deadline:** March 16, 2026
-
-### Requirements checklist
-- [x] Gemini Live API with real-time audio + vision
-- [x] Google GenAI SDK (`@google/genai`)
-- [x] Hosted on Google Cloud Run
-- [x] Demo video (≤4 minutes)
-- [x] Architecture diagram
-- [x] Public GitHub repository with spin-up instructions
 
 ---
 

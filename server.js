@@ -17,7 +17,7 @@ const handle = app.getRequestHandler();
 
 // ─── Gemini Live API integration ──────────────────────────────────────────────
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-native-audio-latest';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-live-2.5-flash-native-audio';
 
 function loadRecyclingRules(cityKey) {
   const filePath = path.join(__dirname, 'lib', 'recycling-rules', `${cityKey}.json`);
@@ -148,7 +148,7 @@ async function handleGeminiWebSocket(ws) {
 
     console.log(`[Recykle] Setting up Gemini session for ${setupMsg.city}`);
 
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey, httpOptions: { apiVersion: 'v1beta1' } });
 
     try {
       geminiSession = await ai.live.connect({
