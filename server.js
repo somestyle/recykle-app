@@ -380,11 +380,16 @@ async function handleGeminiWebSocket(ws) {
         break;
 
       case 'clientText':
-        // "Check This" button — send a text turn to Gemini to analyze current camera frame
+        // "Check This" button — send a text + image turn so Gemini can see the frame
         if (geminiSession && msg.text) {
           try {
+            const parts = [{ text: msg.text }];
+            // Include the captured snapshot so Gemini has an explicit image to reason over
+            if (msg.image) {
+              parts.push({ inlineData: { mimeType: 'image/jpeg', data: msg.image } });
+            }
             await geminiSession.sendClientContent({
-              turns: [{ role: 'user', parts: [{ text: msg.text }] }],
+              turns: [{ role: 'user', parts }],
               turnComplete: true,
             });
           } catch (err) {

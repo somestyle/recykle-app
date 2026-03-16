@@ -99,11 +99,29 @@ export class GeminiLiveClient {
     this.streamingPaused = false;
   }
 
-  // Send a "Check This" text query — triggers Gemini to identify the current camera frame
+  // Send a "Check This" query — captures the current frame and sends it with the text turn
   sendCheckThis(): void {
+    // Capture a high-quality snapshot of the current camera frame
+    let imageData: string | undefined;
+    if (this.videoElement && this.videoElement.videoWidth > 0) {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = this.videoElement.videoWidth;
+        canvas.height = this.videoElement.videoHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(this.videoElement, 0, 0);
+          // Strip the data URL prefix — server only needs raw base64
+          imageData = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+        }
+      } catch {
+        // If capture fails, fall back to text-only (Gemini will use recent stream frames)
+      }
+    }
     this.sendMessage({
       type: 'clientText',
-      text: 'What is this item and how should I dispose of it? Please identify it carefully.',
+      text: 'Look at this image and identify the item. What is it and how should I dispose of it?',
+      image: imageData,
     });
   }
 

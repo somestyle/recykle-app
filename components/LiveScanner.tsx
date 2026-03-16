@@ -706,6 +706,13 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
                 <>
                   <WaveBars active={true} color="#4ade80" />
                   <span className="text-xs font-medium" style={{ color: 'rgba(74,222,128,0.8)' }}>Listening</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); stopSession(); }}
+                    className="ml-0.5 text-[10px] transition-opacity active:opacity-60"
+                    style={{ color: 'rgba(255,255,255,0.22)', lineHeight: 1, flexShrink: 0 }}
+                  >
+                    (stop)
+                  </button>
                 </>
               ) : sessionState === 'error' ? (
                 <>
@@ -747,16 +754,6 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
             </div>
           </div>
 
-          {/* Stop link */}
-          {isLive && (
-            <button
-              onClick={stopSession}
-              className="text-[10px] transition-opacity active:opacity-80"
-              style={{ color: 'rgba(255,255,255,0.18)' }}
-            >
-              Stop session
-            </button>
-          )}
         </div>
 
         {/* Notes */}
