@@ -121,7 +121,7 @@ export default function HistoryList({ onBack }: Props) {
   ) as Record<DisposalCategory, number>;
 
   return (
-    <div className="screen-enter flex h-screen flex-col" style={{ background: 'var(--bg)' }}>
+    <div className="screen-enter flex h-dvh flex-col" style={{ background: 'var(--bg)' }}>
 
       {/* ── Header ── */}
       <div

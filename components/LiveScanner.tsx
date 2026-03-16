@@ -176,7 +176,7 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: Props) {
     .trim();
 
   return (
-    <div className="relative h-screen w-full overflow-hidden bg-black">
+    <div className="relative h-dvh w-full overflow-hidden bg-black">
 
       {/* ── Camera ── */}
       <video

@@ -61,7 +61,7 @@ export default function LocationSetup({ onCitySelected }: Props) {
   }
 
   return (
-    <div className="screen-enter relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6" style={{ background: 'var(--bg)' }}>
+    <div className="screen-enter relative flex min-h-dvh flex-col items-center justify-center overflow-hidden px-6" style={{ background: 'var(--bg)' }}>
 
       {/* Ambient radial glow */}
       <div

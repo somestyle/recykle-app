@@ -231,7 +231,7 @@ async function handleGeminiWebSocket(ws) {
         if (geminiSession && msg.data) {
           try {
             await geminiSession.sendRealtimeInput({
-              audio: {
+              media: {
                 data: msg.data,
                 mimeType: 'audio/pcm;rate=16000',
               },
@@ -246,7 +246,7 @@ async function handleGeminiWebSocket(ws) {
         if (geminiSession && msg.data) {
           try {
             await geminiSession.sendRealtimeInput({
-              video: {
+              media: {
                 data: msg.data,
                 mimeType: 'image/jpeg',
               },

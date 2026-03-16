@@ -7,6 +7,14 @@ module.exports = {
   ],
   theme: {
     extend: {
+      height: {
+        dvh: '100dvh',
+        svh: '100svh',
+      },
+      minHeight: {
+        dvh: '100dvh',
+        svh: '100svh',
+      },
       colors: {
         recycling: '#22c55e',
         garbage: '#ef4444',
