@@ -3,6 +3,22 @@
   "province": "Ontario",
   "country": "Canada",
   "notes": "Markham uses a Blue Box program for recyclables and Green Bin for organics. Collection is bi-weekly for Blue Box and weekly for Green Bin.",
+  "depotLocations": {
+    "battery": [
+      { "name": "Home Depot – Markham", "address": "3900 Hwy 7, Markham, ON L3R 0V3", "note": "Battery collection box at store entrance" },
+      { "name": "IKEA North York Battery Drop", "address": "15 Provost Dr, North York, ON M2K 2X9", "note": "Battery drop-off near entrance" }
+    ],
+    "electronics": [
+      { "name": "York Region Environment Centre", "address": "1091 Warden Ave, Scarborough, ON M1R 0A1", "note": "Open Tue–Sat, accepts TVs, computers, phones" },
+      { "name": "Best Buy – Markville", "address": "5000 Hwy 7 E, Markham, ON L3R 4M9", "note": "E-waste accepted at customer service counter" }
+    ],
+    "hazardous": [
+      { "name": "York Region HHW Drop-off", "address": "1091 Warden Ave, Scarborough, ON M1R 0A1", "note": "Paint, solvents, propane — free for York Region residents" }
+    ],
+    "bulk": [
+      { "name": "Markham Bulk Item Pickup", "address": "Book at markham.ca/solidwaste", "note": "Curbside pickup, book 5 business days ahead" }
+    ]
+  },
   "rules": {
     "recycling": [
       "aluminum can",

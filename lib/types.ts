@@ -11,6 +11,7 @@ export interface DisposalResult {
   category: DisposalCategory;
   explanation: string;
   tip: string | null;
+  address?: { name: string; address: string; note: string };
 }
 
 export interface ScanHistoryEntry {
@@ -96,4 +97,5 @@ export type ServerMessage =
   | { type: 'disposal'; item: string; material: string; category: DisposalCategory; explanation: string; tip: string | null }
   | { type: 'turnComplete' }
   | { type: 'interrupted' }
+  | { type: 'userTranscript'; text: string; finished: boolean }
   | { type: 'error'; message: string };

@@ -3,6 +3,23 @@
   "province": "Ontario",
   "country": "Canada",
   "notes": "Toronto uses a Blue Bin for recyclables, Green Bin for organics, and Black Bin for garbage. Toronto also has a Holiday Tree Chipping program. Items need to be clean and dry for recycling.",
+  "depotLocations": {
+    "battery": [
+      { "name": "Home Depot – Yonge & Eglinton", "address": "2017 Yonge St, Toronto, ON M4S 1Z7", "note": "Drop batteries at the front-door collection box" },
+      { "name": "Home Depot – Eglinton East", "address": "1900 Eglinton Ave E, Toronto, ON M1L 2L9", "note": "Battery drop-off bin at entrance" }
+    ],
+    "electronics": [
+      { "name": "Toronto Reuse Centre", "address": "40 Commissioners St, Toronto, ON M5A 1A7", "note": "Free drop-off, open Mon–Sat 8am–4pm" },
+      { "name": "Best Buy – Gerrard Square", "address": "1000 Gerrard St E, Toronto, ON M4M 3G6", "note": "Accepts old electronics at customer service" }
+    ],
+    "hazardous": [
+      { "name": "North York Civic Centre HHW Depot", "address": "5100 Yonge St, Toronto, ON M2N 5V7", "note": "Accepts paint, solvents, propane — seasonal hours" },
+      { "name": "Household Hazardous Waste – Commissioners", "address": "40 Commissioners St, Toronto, ON M5A 1A7", "note": "Year-round, Sat 8am–4pm" }
+    ],
+    "bulk": [
+      { "name": "Toronto Bulk Item Collection", "address": "Book online at toronto.ca/bulkpickup", "note": "Free curbside pickup, schedule 2 weeks in advance" }
+    ]
+  },
   "rules": {
     "recycling": [
       "aluminum can",

@@ -27,7 +27,7 @@ export default function Home() {
   return (
     // `overflow-hidden` ONLY on the scanner — applied per-screen inside LiveScanner.
     // Here we allow scroll so HistoryList can scroll on iOS.
-    <main className="h-screen w-full bg-black">
+    <main className="h-dvh w-full overflow-hidden bg-black">
       {screen === 'setup' && (
         <LocationSetup key={screenKey} onCitySelected={handleCitySelected} />
       )}

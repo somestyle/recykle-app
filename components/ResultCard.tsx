@@ -193,6 +193,26 @@ export default function ResultCard({ result, city, thumbnail, onDismiss }: Props
           {result.explanation}
         </p>
 
+        {/* Drop-off address block — for Depot Drop-off and Bulk Item */}
+        {result.address && (
+          <div className="mx-4 mt-3 rounded-xl px-3.5 py-3"
+               style={{ background: 'rgba(249,115,22,0.07)', border: '1px solid rgba(249,115,22,0.18)' }}>
+            <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5"
+               style={{ color: 'rgba(249,115,22,0.7)' }}>Nearest drop-off</p>
+            <p className="text-sm font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>
+              {result.address.name}
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+              {result.address.address}
+            </p>
+            {result.address.note && (
+              <p className="text-xs mt-1.5" style={{ color: 'rgba(251,191,36,0.8)' }}>
+                {result.address.note}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* ── Preparation tip ──────────────────────────────────────── */}
         {result.tip && (
           <div

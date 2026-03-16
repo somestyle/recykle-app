@@ -142,6 +142,19 @@ button, [role="button"] {
 }
 .spinner { animation: rotateSpin 0.85s linear infinite; }
 
+/* ─── Emoji reaction flash ──────────────────────────────────────────────────── */
+@keyframes emojiPop {
+  0%   { transform: scale(0.3); opacity: 0; }
+  40%  { transform: scale(1.2); opacity: 1; }
+  60%  { transform: scale(1.0); opacity: 1; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+.emoji-flash {
+  animation: emojiPop 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: none;
+  user-select: none;
+}
+
 /* ─── Reduced motion support ────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .screen-enter { animation: none; opacity: 1; transform: none; }
@@ -151,4 +164,5 @@ button, [role="button"] {
   .scan-line    { animation: none; top: 50%; }
   .wave-bar     { animation: none; transform: scaleY(0.6); }
   .spinner      { animation-duration: 1.5s; }
+  .emoji-flash { animation: none; opacity: 0; }
 }

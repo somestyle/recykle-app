@@ -12,6 +12,7 @@ export interface GeminiLiveCallbacks {
   onStatusChange: (status: GeminiLiveStatus) => void;
   onDisposalResult: (result: DisposalResult, thumbnail?: string) => void;
   onTranscriptUpdate: (text: string) => void;
+  onUserTranscript?: (text: string, finished: boolean) => void;
   onError: (message: string) => void;
 }
 
@@ -138,6 +139,10 @@ export class GeminiLiveClient {
         this.clearAudioQueue();
         this.setStatus('ready');
         this.currentTranscript = '';
+        break;
+
+      case 'userTranscript':
+        this.callbacks.onUserTranscript?.(msg.text, msg.finished);
         break;
 
       case 'error':

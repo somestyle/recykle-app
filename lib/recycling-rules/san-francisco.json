@@ -3,6 +3,22 @@
   "province": "California",
   "country": "United States",
   "notes": "San Francisco has one of the most comprehensive recycling programs in the US with three streams: Blue (recycling), Green (compost/organics), and Black (garbage). SF aims for zero waste. Composting is mandatory for all residents and businesses.",
+  "depotLocations": {
+    "battery": [
+      { "name": "Recology SF – Transfer Station", "address": "501 Tunnel Ave, San Francisco, CA 94134", "note": "Household battery drop-off free of charge" },
+      { "name": "Home Depot – Potrero", "address": "2600 Bayshore Blvd, San Francisco, CA 94134", "note": "Battery recycling bin at entrance" }
+    ],
+    "electronics": [
+      { "name": "SF Household Hazardous Waste Facility", "address": "501 Tunnel Ave, San Francisco, CA 94134", "note": "Free e-waste drop-off Sat–Sun 8am–4pm" },
+      { "name": "Best Buy – Serramonte Center", "address": "3 Serramonte Ctr, Daly City, CA 94015", "note": "E-waste recycling accepted at service desk" }
+    ],
+    "hazardous": [
+      { "name": "SF HHW – Tunnel Ave Facility", "address": "501 Tunnel Ave, San Francisco, CA 94134", "note": "Paint, medications, solvents — free for SF residents" }
+    ],
+    "bulk": [
+      { "name": "Recology SF Bulky Item Pickup", "address": "Book at recologysf.com or call 415-330-1300", "note": "Free for SF residents, schedule online" }
+    ]
+  },
   "rules": {
     "recycling": [
       "aluminum can",

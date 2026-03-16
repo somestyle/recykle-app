@@ -53,6 +53,8 @@ When the user shows you an item through the camera or asks what to do with somet
 3. Determine the correct disposal category based ONLY on ${city}'s specific rules above
 4. Respond with a short, conversational spoken answer (2–3 sentences max)
 5. After your spoken answer, output a structured data block formatted EXACTLY like this:
+IMPORTANT: Do NOT output your thinking process, internal reasoning steps, or any markdown formatting (no **bold**, no ## headers, no assessment headers like "Assessing Recyclability Now"). Respond directly and naturally.
+For Depot Drop-off or Bulk Item categories, mention the nearest drop-off location name and address from the depotLocations data in your spoken response.
 
 <disposal_data>
 {
@@ -60,7 +62,7 @@ When the user shows you an item through the camera or asks what to do with somet
   "material": "material type",
   "category": "Recycling",
   "explanation": "One sentence explaining why this category applies in ${city}.",
-  "tip": "One short preparation tip, or null if none needed"
+  "tip": "One short preparation tip, or null if none needed. For Depot Drop-off or Bulk Item, include the nearest drop-off location name and address here."
 }
 </disposal_data>
 
@@ -141,6 +143,7 @@ async function handleGeminiWebSocket(ws) {
           // We get transcription via outputAudioTranscription instead.
           responseModalities: ['AUDIO'],
           outputAudioTranscription: {},
+          inputAudioTranscription: {},
           systemInstruction: systemPrompt,
           speechConfig: {
             voiceConfig: {
@@ -219,6 +222,17 @@ async function handleGeminiWebSocket(ws) {
           }
           textBuffer = '';
         }
+      }
+    }
+
+    // Input transcription — user speech (from inputAudioTranscription config)
+    if (content.inputTranscription) {
+      const t = content.inputTranscription;
+      if (t.text) {
+        sendToClient({ type: 'userTranscript', text: t.text, finished: false });
+      }
+      if (t.finished) {
+        sendToClient({ type: 'userTranscript', text: '', finished: true });
       }
     }
 
