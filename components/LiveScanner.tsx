@@ -9,6 +9,7 @@ import ResultCard from './ResultCard';
 interface Props {
   city: CityInfo;
   onOpenHistory: () => void;
+  onGoHome: () => void;
 }
 
 const VIDEO_CONSTRAINTS: MediaStreamConstraints = {
@@ -67,7 +68,7 @@ function Corner({ pos }: { pos: 'tl' | 'tr' | 'bl' | 'br' }) {
   );
 }
 
-export default function LiveScanner({ city, onOpenHistory }: Props) {
+export default function LiveScanner({ city, onOpenHistory, onGoHome }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const clientRef = useRef<GeminiLiveClient | null>(null);
 
@@ -193,6 +194,17 @@ export default function LiveScanner({ city, onOpenHistory }: Props) {
       {/* ── Top bar ── */}
       <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-4 pt-safe-5">
         <div className="flex items-center gap-2">
+          {/* Back to home / change location */}
+          <button
+            onClick={onGoHome}
+            className="flex h-8 w-8 items-center justify-center rounded-full transition-all active:scale-90 hover:bg-white/20"
+            style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)' }}
+            aria-label="Change location"
+          >
+            <svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5 text-white" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10 12L6 8l4-4" />
+            </svg>
+          </button>
           <span className="text-lg font-bold text-white">Recykle</span>
           <span
             className="rounded-full px-2 py-0.5 text-[11px] font-medium"
@@ -205,7 +217,7 @@ export default function LiveScanner({ city, onOpenHistory }: Props) {
         {/* History button */}
         <button
           onClick={onOpenHistory}
-          className="flex items-center gap-1.5 rounded-full py-1.5 pl-2.5 pr-3 text-sm font-medium text-white transition-all active:scale-95"
+          className="flex items-center gap-1.5 rounded-full py-1.5 pl-2.5 pr-3 text-sm font-medium text-white transition-all active:scale-95 hover:bg-white/20"
           style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)' }}
         >
           <svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5 shrink-0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -316,7 +328,7 @@ export default function LiveScanner({ city, onOpenHistory }: Props) {
             <button
               onClick={startSession}
               disabled={!cameraReady}
-              className="relative flex h-[72px] w-[72px] items-center justify-center rounded-full transition-all active:scale-95 disabled:opacity-30"
+              className="relative flex h-[72px] w-[72px] items-center justify-center rounded-full transition-all active:scale-95 hover:brightness-110 disabled:opacity-30"
               style={{
                 background: 'linear-gradient(145deg, #22c55e, #16a34a)',
                 boxShadow: '0 8px 28px rgba(34,197,94,0.45)',
@@ -334,7 +346,7 @@ export default function LiveScanner({ city, onOpenHistory }: Props) {
           ) : (
             <button
               onClick={stopSession}
-              className="relative flex h-[72px] w-[72px] items-center justify-center rounded-full transition-all active:scale-95"
+              className="relative flex h-[72px] w-[72px] items-center justify-center rounded-full transition-all active:scale-95 hover:brightness-125"
               style={{
                 background: 'rgba(239,68,68,0.15)',
                 backdropFilter: 'blur(12px)',

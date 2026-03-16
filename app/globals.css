@@ -4,18 +4,18 @@
 
 /* ─── Design tokens ─────────────────────────────────────────────────────────── */
 :root {
-  --bg: #000000;
-  --surface: #111114;
-  --surface-2: #1c1c20;
-  --border: rgba(255, 255, 255, 0.07);
-  --border-hover: rgba(255, 255, 255, 0.14);
+  --bg: #F8FAFC;
+  --surface: #FFFFFF;
+  --surface-2: #F1F5F9;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-hover: rgba(0, 0, 0, 0.16);
 
   --green: #22c55e;
-  --green-glow: rgba(34, 197, 94, 0.22);
+  --green-glow: rgba(34, 197, 94, 0.20);
 
-  --text-primary: #ffffff;
-  --text-secondary: #a1a1aa;
-  --text-tertiary: #52525b;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-tertiary: #94A3B8;
 
   /* Category colors */
   --recycling: #22c55e;
@@ -51,6 +51,20 @@ body {
   -webkit-font-smoothing: antialiased;
   color: var(--text-primary);
   background: var(--bg);
+  color-scheme: light;
+}
+
+/* ─── Interactive element defaults ──────────────────────────────────────────── */
+button, [role="button"] {
+  cursor: pointer;
+  touch-action: manipulation; /* removes 300ms tap delay on mobile */
+}
+
+/* ─── Focus states for keyboard navigation ──────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 3px;
+  border-radius: 4px;
 }
 
 /* ─── Safe area utilities ───────────────────────────────────────────────────── */
@@ -120,3 +134,14 @@ body {
   to { transform: rotate(360deg); }
 }
 .spinner { animation: rotateSpin 0.85s linear infinite; }
+
+/* ─── Reduced motion support ────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .screen-enter { animation: none; opacity: 1; transform: none; }
+  .slide-up     { animation: none; transform: none; }
+  .logo-pulse, .logo-pulse-delay { animation: none; opacity: 0; }
+  .ripple-1, .ripple-2 { animation: none; opacity: 0; }
+  .scan-line    { animation: none; top: 50%; }
+  .wave-bar     { animation: none; transform: scaleY(0.6); }
+  .spinner      { animation-duration: 1.5s; }
+}

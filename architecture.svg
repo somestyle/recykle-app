@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 580" width="900" height="580" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+  <!-- Background -->
+  <rect width="900" height="580" fill="#F8FAFC" rx="16"/>
+
+  <!-- Title -->
+  <text x="450" y="44" text-anchor="middle" font-size="22" font-weight="700" fill="#0F172A" letter-spacing="-0.5">Recykle — System Architecture</text>
+  <text x="450" y="66" text-anchor="middle" font-size="13" fill="#64748B">Gemini Live Agent Challenge · Google Cloud Run</text>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- Row 1: USER -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <rect x="340" y="90" width="220" height="70" rx="14" fill="#DCFCE7" stroke="#86EFAC" stroke-width="1.5"/>
+  <text x="450" y="118" text-anchor="middle" font-size="13" font-weight="600" fill="#15803D">User (Phone / Browser)</text>
+  <text x="450" y="136" text-anchor="middle" font-size="11" fill="#16A34A">Camera feed · Microphone voice</text>
+  <text x="450" y="151" text-anchor="middle" font-size="11" fill="#16A34A">localhost:3000 or Cloud Run HTTPS</text>
+
+  <!-- Arrow: User → Browser layer -->
+  <line x1="450" y1="160" x2="450" y2="185" stroke="#94A3B8" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <polygon points="445,183 450,192 455,183" fill="#94A3B8"/>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- Row 2: BROWSER (Next.js) -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <rect x="60" y="192" width="780" height="100" rx="14" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1.5"/>
+  <text x="450" y="215" text-anchor="middle" font-size="13" font-weight="700" fill="#1D4ED8">Browser — Next.js 15 + React 19</text>
+
+  <!-- Sub-boxes inside Browser row -->
+  <!-- LiveScanner -->
+  <rect x="80" y="224" width="165" height="54" rx="8" fill="#DBEAFE" stroke="#93C5FD" stroke-width="1"/>
+  <text x="162" y="245" text-anchor="middle" font-size="11" font-weight="600" fill="#1E40AF">LiveScanner.tsx</text>
+  <text x="162" y="260" text-anchor="middle" font-size="10" fill="#3B82F6">Camera preview · Start/Stop</text>
+  <text x="162" y="273" text-anchor="middle" font-size="10" fill="#3B82F6">Session state management</text>
+
+  <!-- AudioWorklet -->
+  <rect x="260" y="224" width="165" height="54" rx="8" fill="#DBEAFE" stroke="#93C5FD" stroke-width="1"/>
+  <text x="342" y="245" text-anchor="middle" font-size="11" font-weight="600" fill="#1E40AF">AudioWorklet</text>
+  <text x="342" y="260" text-anchor="middle" font-size="10" fill="#3B82F6">Mic → PCM16 @ 16 kHz</text>
+  <text x="342" y="273" text-anchor="middle" font-size="10" fill="#3B82F6">Base64 → WebSocket</text>
+
+  <!-- Canvas Video -->
+  <rect x="440" y="224" width="165" height="54" rx="8" fill="#DBEAFE" stroke="#93C5FD" stroke-width="1"/>
+  <text x="522" y="245" text-anchor="middle" font-size="11" font-weight="600" fill="#1E40AF">Canvas Frame Capture</text>
+  <text x="522" y="260" text-anchor="middle" font-size="10" fill="#3B82F6">JPEG @ 1 fps</text>
+  <text x="522" y="273" text-anchor="middle" font-size="10" fill="#3B82F6">Base64 → WebSocket</text>
+
+  <!-- Audio Playback -->
+  <rect x="620" y="224" width="200" height="54" rx="8" fill="#DBEAFE" stroke="#93C5FD" stroke-width="1"/>
+  <text x="720" y="245" text-anchor="middle" font-size="11" font-weight="600" fill="#1E40AF">Web Audio API Playback</text>
+  <text x="720" y="260" text-anchor="middle" font-size="10" fill="#3B82F6">PCM16 @ 24 kHz buffer queue</text>
+  <text x="720" y="273" text-anchor="middle" font-size="10" fill="#3B82F6">Real-time voice output</text>
+
+  <!-- Arrow: Browser → Server -->
+  <line x1="450" y1="292" x2="450" y2="322" stroke="#94A3B8" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <polygon points="445,320 450,329 455,320" fill="#94A3B8"/>
+  <!-- Label on arrow -->
+  <rect x="310" y="298" width="280" height="18" rx="4" fill="#F1F5F9"/>
+  <text x="450" y="311" text-anchor="middle" font-size="10" fill="#475569" font-weight="500">WebSocket  ws://…/ws/gemini   { type: audio | video | setup }</text>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- Row 3: SERVER (Node.js) -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <rect x="60" y="330" width="780" height="90" rx="14" fill="#FFF7ED" stroke="#FED7AA" stroke-width="1.5"/>
+  <text x="450" y="353" text-anchor="middle" font-size="13" font-weight="700" fill="#C2410C">server.js — Node.js WebSocket Proxy</text>
+  <text x="450" y="370" text-anchor="middle" font-size="11" fill="#EA580C">Hosted on Google Cloud Run  ·  Port 8080</text>
+
+  <!-- Sub-items in server row -->
+  <rect x="80" y="378" width="200" height="32" rx="6" fill="#FFEDD5" stroke="#FDBA74" stroke-width="1"/>
+  <text x="180" y="395" text-anchor="middle" font-size="10" font-weight="600" fill="#9A3412">Loads recycling rules JSON</text>
+  <text x="180" y="407" text-anchor="middle" font-size="10" fill="#EA580C">markham / toronto / san-francisco</text>
+
+  <rect x="295" y="378" width="200" height="32" rx="6" fill="#FFEDD5" stroke="#FDBA74" stroke-width="1"/>
+  <text x="395" y="395" text-anchor="middle" font-size="10" font-weight="600" fill="#9A3412">Builds Gemini system prompt</text>
+  <text x="395" y="407" text-anchor="middle" font-size="10" fill="#EA580C">City + rules + Recykle persona</text>
+
+  <rect x="510" y="378" width="310" height="32" rx="6" fill="#FFEDD5" stroke="#FDBA74" stroke-width="1"/>
+  <text x="665" y="395" text-anchor="middle" font-size="10" font-weight="600" fill="#9A3412">Parses &lt;disposal_data&gt; from text stream</text>
+  <text x="665" y="407" text-anchor="middle" font-size="10" fill="#EA580C">item · material · category · explanation · tip</text>
+
+  <!-- Arrow: Server → Gemini -->
+  <line x1="450" y1="420" x2="450" y2="450" stroke="#94A3B8" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <polygon points="445,448 450,457 455,448" fill="#94A3B8"/>
+  <rect x="305" y="426" width="290" height="18" rx="4" fill="#F1F5F9"/>
+  <text x="450" y="439" text-anchor="middle" font-size="10" fill="#475569" font-weight="500">@google/genai  ·  ai.live.connect()  ·  Aoede voice</text>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- Row 4: GEMINI -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <rect x="200" y="458" width="500" height="72" rx="14" fill="#F0FDF4" stroke="#86EFAC" stroke-width="2"/>
+  <!-- Google colors accent bar -->
+  <rect x="200" y="458" width="500" height="5" rx="5" fill="url(#googleGrad)"/>
+  <defs>
+    <linearGradient id="googleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#4285F4"/>
+      <stop offset="33%" style="stop-color:#EA4335"/>
+      <stop offset="66%" style="stop-color:#FBBC05"/>
+      <stop offset="100%" style="stop-color:#34A853"/>
+    </linearGradient>
+  </defs>
+  <text x="450" y="488" text-anchor="middle" font-size="14" font-weight="700" fill="#15803D">Gemini Live API</text>
+  <text x="450" y="506" text-anchor="middle" font-size="12" fill="#16A34A" font-weight="500">gemini-2.0-flash-live-001</text>
+  <text x="450" y="522" text-anchor="middle" font-size="11" fill="#22C55E">Real-time audio + vision  ·  Interruptible  ·  Voice: Aoede</text>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- Row 5: OUTPUTS (bottom) -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- Left output: Result Card -->
+  <rect x="60" y="545" width="240" height="24" rx="8" fill="#DCFCE7" stroke="#86EFAC" stroke-width="1"/>
+  <text x="180" y="561" text-anchor="middle" font-size="11" font-weight="600" fill="#15803D">ResultCard overlay (Recycling / Garbage / Compost / Depot / Bulk)</text>
+
+  <!-- Right output: History -->
+  <rect x="600" y="545" width="240" height="24" rx="8" fill="#FEF9C3" stroke="#FDE047" stroke-width="1"/>
+  <text x="720" y="561" text-anchor="middle" font-size="11" font-weight="600" fill="#854D0E">History (localStorage) — saved per scan</text>
+
+  <!-- Arrows from Gemini to outputs -->
+  <line x1="340" y1="530" x2="220" y2="545" stroke="#86EFAC" stroke-width="1.5"/>
+  <polygon points="215,542 220,551 225,542" fill="#86EFAC"/>
+  <line x1="560" y1="530" x2="680" y2="545" stroke="#FDE047" stroke-width="1.5"/>
+  <polygon points="675,542 680,551 685,542" fill="#FDE047"/>
+
+  <!-- Return arrow label (right side) -->
+  <text x="840" y="390" text-anchor="middle" font-size="10" fill="#94A3B8" transform="rotate(-90,840,390)">← audio response + disposal JSON</text>
+</svg>

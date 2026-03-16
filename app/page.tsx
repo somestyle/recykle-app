@@ -37,6 +37,7 @@ export default function Home() {
           key={screenKey}
           city={city}
           onOpenHistory={() => go('history')}
+          onGoHome={() => go('setup')}
         />
       )}
 
