@@ -4,23 +4,20 @@
 
 Recykle is a real-time AI recycling assistant that uses **Gemini Live API** to simultaneously process your voice and camera feed, then responds with spoken disposal guidance and an on-screen result card — all grounded in your city's actual recycling rules.
 
+> ⚡ **Live app:** https://recykle-app-xegkworlaq-uc.a.run.app
+
 Built for the **[Gemini Live Agent Challenge](https://geminiliveagentchallenge.devpost.com/)** — Devpost hackathon.
 
 ---
 
-## Demo
+## Why This Is Different
 
-**Scenario:** You just finished takeout. You hold up a black plastic container and ask *"What about this?"*
-
-Recykle responds:
-> *"That's black plastic — and here's the tricky part. Black plastic isn't detectable by recycling sorting machines, so Markham puts this in the garbage, not recycling."*
-
-A result card appears on screen with the Garbage category and a preparation tip.
-
-### 3-scan demo flow
-1. **Aluminum can** → Recycling (easy win, sets expectations)
-2. **Black plastic container** → Garbage (surprising — the "aha" moment)
-3. **Battery** → Depot Drop-off (hazardous, saved to history for later)
+| Feature | Standard chatbot | Recykle |
+|---|---|---|
+| Input | Text only | Live voice + camera simultaneously |
+| Interruptions | Must wait for response | Speak anytime, AI adapts in real-time |
+| Accuracy | General AI knowledge | Grounded in your city's actual municipal rules |
+| Output | Text on screen | Spoken response + structured result card |
 
 ---
 
@@ -153,6 +150,9 @@ The deploy script:
 
 ## How It Works
 
+### ⚡ Interruption handling (key differentiator)
+Unlike turn-based APIs, Gemini Live API allows the user to speak at any time — even mid-response. Recykle adapts immediately without any custom interruption logic. This is what makes it feel like a real conversation, not a chatbot.
+
 ### Real-time multimodal loop
 1. Browser captures microphone audio via **AudioWorklet** at 16 kHz, encodes as PCM16, sends to server via WebSocket
 2. Browser captures camera frames via **Canvas** at 1 fps, encodes as JPEG, sends to server via WebSocket
@@ -160,9 +160,6 @@ The deploy script:
 4. Gemini processes audio + video simultaneously with the city's recycling rules injected into its system prompt
 5. Gemini returns a spoken audio response + a structured `<disposal_data>` JSON block in the text stream
 6. Server forwards audio chunks to browser for real-time playback, and parses the disposal JSON for the result card
-
-### Interruption handling
-Because this uses the Gemini Live API (not a turn-based API), the user can speak mid-response and Recykle adapts immediately. This is the key differentiator from standard chat-style AI.
 
 ### City-specific grounding
 Recycling rules for each city are stored as JSON in `lib/recycling-rules/`. The full rules object is injected into the Gemini system prompt at session start, ensuring all disposal decisions are grounded in the actual municipal guidelines — not hallucinated.
@@ -198,6 +195,8 @@ recykle-app/
 └── deploy.sh                     # One-command Cloud Run deployment
 ```
 
+> **Note on Python files:** The Python files in this repo are utility/analysis scripts used during development (e.g. testing recycling rule parsing). The production app is entirely Node.js + TypeScript as described above.
+
 ---
 
 ## Environment Variables
@@ -231,6 +230,16 @@ recykle-app/
 - Expand to 10+ cities with a proper rules database
 - Native iOS/Android app (camera + mic access is much smoother in native)
 - Voice Activity Detection (VAD) visual feedback
+
+---
+
+## Cloud Deployment
+
+**Live URL:** https://recykle-app-xegkworlaq-uc.a.run.app
+
+Deployed on Google Cloud Run (managed, serverless containers). The backend WebSocket server proxies audio and video streams to Gemini Live API in real-time.
+
+To verify deployment, visit the live URL above or see `deploy.sh` for the one-command deployment script.
 
 ---
 
