@@ -27,6 +27,8 @@ jobs:
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         with:
           workload_identity_provider: projects/441704142144/locations/global/workloadIdentityPools/github-pool/providers/github-provider
           service_account: github-deploy@project-0dc71d83-066d-43f1-ad2.iam.gserviceaccount.com
