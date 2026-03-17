@@ -6,11 +6,12 @@ import type { CityInfo } from '@/lib/types';
 interface Props {
   city: CityInfo;
   onStart: () => void;
+  onBack?: () => void;
 }
 
 type PermState = 'idle' | 'requesting' | 'granted' | 'denied';
 
-export default function Onboarding({ city, onStart }: Props) {
+export default function Onboarding({ city, onStart, onBack }: Props) {
   const [camPerm, setCamPerm] = useState<PermState>('idle');
   const [micPerm, setMicPerm] = useState<PermState>('idle');
 
@@ -47,6 +48,20 @@ export default function Onboarding({ city, onStart }: Props) {
       className="screen-enter flex h-dvh flex-col"
       style={{ background: '#f8fafc' }}
     >
+      {/* Back button */}
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="absolute left-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full transition-all active:scale-90"
+          style={{ background: 'rgba(0,0,0,0.06)' }}
+          aria-label="Go back"
+        >
+          <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="#0f172a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+      )}
+
       {/* Logo section */}
       <div className="flex shrink-0 flex-col items-center px-6 pt-10 pb-5">
         <div

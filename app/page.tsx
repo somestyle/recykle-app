@@ -38,6 +38,7 @@ export default function Home() {
           key={screenKey}
           city={city}
           onStart={() => go('scanner')}
+          onBack={() => go('setup')}
         />
       )}
 

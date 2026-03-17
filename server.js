@@ -47,7 +47,9 @@ YOUR PERSONALITY:
 - Like a helpful neighbour who knows everything about recycling
 
 INSTRUCTIONS:
-When the user shows you an item through the camera or asks what to do with something:
+IMPORTANT: Only respond when the user explicitly speaks to you or sends a message. Do NOT proactively identify items or call record_disposal() just because you can see something in the camera. Wait for the user to ask.
+
+When the user speaks and asks about an item:
 1. Look carefully at what is visible in the camera feed
 2. Identify the specific item precisely (e.g. "black plastic clamshell container", not just "container")
 3. Determine the correct disposal category based ONLY on ${city}'s rules above
@@ -57,9 +59,12 @@ When the user shows you an item through the camera or asks what to do with somet
 CRITICAL SPOKEN RESPONSE RULES:
 - Start with the answer: "That's recyclable!" / "That goes in the garbage." / "That needs a depot drop-off."
 - Maximum 2 sentences. Never more.
-- NEVER begin with: "I'm analyzing..." / "I'm currently..." / "Based on..." / "Let me..." / "My research..."
+- NEVER begin with: "I'm analyzing..." / "I'm currently..." / "Based on..." / "Let me..." / "My research..." / "I've shifted..." / "I'll confirm..." / "I will..." / "I'm going to..." / "It's a key detail..."
+- NEVER narrate your thought process, reasoning, or internal analysis out loud — the user hears everything you say
+- NEVER say what you "plan to" do — just do it
 - NEVER speak reasoning or analysis — only the verdict and one brief tip
 - Do NOT use markdown formatting (no **bold**, no ## headers)
+- For conversational questions (not disposal), answer in 1–2 sentences directly — no preamble whatsoever
 For Depot Drop-off or Bulk Item, mention the nearest drop-off location name in your 1-2 sentence response.
 
 Valid category values: "Recycling", "Garbage", "Compost", "Depot Drop-off", "Bulk Item"
@@ -122,6 +127,7 @@ async function handleGeminiWebSocket(ws) {
   let textBuffer = '';
   let currentRules = null; // stored for depot address lookups in tool calls
   let disposalFiredThisTurn = false; // tracks if record_disposal was called this turn
+  let assistantSpeaking = false; // suppress inputTranscription while Recykle speaks
 
   function sendToClient(msg) {
     if (ws.readyState === WebSocket.OPEN) {
@@ -241,6 +247,7 @@ async function handleGeminiWebSocket(ws) {
     if (content.interrupted) {
       textBuffer = '';
       disposalFiredThisTurn = false;
+      assistantSpeaking = false;
       sendToClient({ type: 'interrupted' });
       return;
     }
@@ -252,6 +259,7 @@ async function handleGeminiWebSocket(ws) {
         if (part.inlineData) {
           const { mimeType, data } = part.inlineData;
           if (mimeType && mimeType.startsWith('audio/')) {
+            assistantSpeaking = true;
             sendToClient({ type: 'audio', data, mimeType });
           }
         }
@@ -294,7 +302,8 @@ async function handleGeminiWebSocket(ws) {
     }
 
     // Input transcription — user speech (from inputAudioTranscription config)
-    if (content.inputTranscription) {
+    // Suppressed while the assistant is speaking to prevent mic echo being transcribed
+    if (content.inputTranscription && !assistantSpeaking) {
       const t = content.inputTranscription;
       if (t.text) {
         sendToClient({ type: 'userTranscript', text: t.text, finished: false });
@@ -314,6 +323,7 @@ async function handleGeminiWebSocket(ws) {
         textBuffer = '';
       }
       disposalFiredThisTurn = false;
+      assistantSpeaking = false;
       sendToClient({ type: 'turnComplete' });
     }
   }
