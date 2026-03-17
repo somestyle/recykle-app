@@ -189,6 +189,13 @@ async function handleGeminiWebSocket(ws) {
               prebuiltVoiceConfig: { voiceName: 'Aoede' },
             },
           },
+          // Disable extended thinking so the model does not narrate its internal
+          // reasoning out loud — only the final concise response is spoken.
+          generationConfig: {
+            thinkingConfig: {
+              thinkingBudget: 0,
+            },
+          },
         },
       });
     } catch (err) {

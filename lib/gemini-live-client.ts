@@ -152,9 +152,10 @@ export class GeminiLiveClient {
           this.responseTranscript += msg.text;
           this.callbacks.onTranscriptUpdate(this.responseTranscript);
         } else {
+          // Pre-disposal or conversational — accumulate silently.
+          // Do NOT stream live: would show internal reasoning text AND would
+          // bypass the disposalFiredLastTurn guard causing duplicate entries.
           this.thinkingTranscript += msg.text;
-          // Stream live so text appears alongside audio, not all at once on turnComplete
-          this.callbacks.onTranscriptUpdate(this.thinkingTranscript);
         }
         break;
 
@@ -182,6 +183,13 @@ export class GeminiLiveClient {
       }
 
       case 'turnComplete':
+        // Show conversational response only — not for tool follow-up turns after disposal
+        if (!this.disposalFiredThisTurn && !this.disposalFiredLastTurn && this.thinkingTranscript.trim()) {
+          // Extract only the final paragraph (actual response, not internal reasoning)
+          const paras = this.thinkingTranscript.split(/\n{2,}/).map((p: string) => p.trim()).filter(Boolean);
+          const displayText = paras.length >= 2 ? paras[paras.length - 1] : this.thinkingTranscript;
+          this.callbacks.onTranscriptUpdate(displayText.trim());
+        }
         this.disposalFiredLastTurn = this.disposalFiredThisTurn;
         this.thinkingTranscript = '';
         this.responseTranscript = '';
