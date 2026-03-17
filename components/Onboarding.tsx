@@ -16,6 +16,9 @@ export default function Onboarding({ city, onStart, onBack }: Props) {
   const [micPerm, setMicPerm] = useState<PermState>('idle');
 
   const allGranted = camPerm === 'granted' && micPerm === 'granted';
+  const anyDenied  = camPerm === 'denied'  || micPerm === 'denied';
+  const requesting = camPerm === 'requesting' || micPerm === 'requesting';
+  const needsPermission = camPerm === 'idle' || micPerm === 'idle';
 
   const requestPermissions = useCallback(async () => {
     setCamPerm('requesting');
@@ -40,20 +43,31 @@ export default function Onboarding({ city, onStart, onBack }: Props) {
     }
   }, []);
 
-  const anyDenied = camPerm === 'denied' || micPerm === 'denied';
-  const requesting = camPerm === 'requesting' || micPerm === 'requesting';
+  // Single bottom button: request → loading → start
+  function handleCta() {
+    if (allGranted) { onStart(); return; }
+    if (!requesting && !anyDenied) requestPermissions();
+  }
+
+  const ctaLabel = requesting
+    ? 'Requesting access…'
+    : allGranted
+    ? 'Start Scanning'
+    : anyDenied
+    ? 'Permission denied — check browser settings'
+    : 'Allow Camera & Microphone';
+
+  const ctaEnabled = !requesting && !anyDenied;
 
   return (
-    <div
-      className="screen-enter flex h-dvh flex-col"
-      style={{ background: '#f8fafc' }}
-    >
-      {/* Back button */}
+    <div className="screen-enter relative flex h-dvh flex-col" style={{ background: '#f8fafc' }}>
+
+      {/* Back chevron */}
       {onBack && (
         <button
           onClick={onBack}
-          className="absolute left-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full transition-all active:scale-90"
-          style={{ background: 'rgba(0,0,0,0.06)' }}
+          className="absolute left-4 top-safe-4 z-10 flex h-9 w-9 items-center justify-center rounded-full transition-all active:scale-90"
+          style={{ top: 'max(16px, env(safe-area-inset-top, 16px))', background: 'rgba(0,0,0,0.07)' }}
           aria-label="Go back"
         >
           <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="#0f172a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -62,13 +76,13 @@ export default function Onboarding({ city, onStart, onBack }: Props) {
         </button>
       )}
 
-      {/* Logo section */}
-      <div className="flex shrink-0 flex-col items-center px-6 pt-10 pb-5">
+      {/* Logo — tighter top padding */}
+      <div className="flex shrink-0 flex-col items-center px-6 pt-6 pb-4">
         <div
-          className="mb-4 flex h-16 w-16 items-center justify-center rounded-[20px]"
-          style={{ background: 'linear-gradient(145deg, #22c55e, #16a34a)', boxShadow: '0 8px 28px rgba(34,197,94,0.3)' }}
+          className="mb-3 flex h-14 w-14 items-center justify-center rounded-[18px]"
+          style={{ background: 'linear-gradient(145deg, #22c55e, #16a34a)', boxShadow: '0 6px 20px rgba(34,197,94,0.3)' }}
         >
-          <svg viewBox="0 0 32 32" fill="none" className="h-9 w-9">
+          <svg viewBox="0 0 32 32" fill="none" className="h-8 w-8">
             <path d="M10 24H7.2a2.4 2.4 0 0 1-2.06-1.16 2.34 2.34 0 0 1-.005-2.34L9.94 12.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M14.5 24h10.76a2.4 2.4 0 0 0 2.04-1.17 2.34 2.34 0 0 0 0-2.33l-1.61-2.78" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="m18 20-4 4 4 4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -85,10 +99,25 @@ export default function Onboarding({ city, onStart, onBack }: Props) {
 
       {/* Scrollable content */}
       <div
-        className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 pb-4"
+        className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 pb-4"
         style={{ scrollbarWidth: 'none' } as React.CSSProperties}
       >
-        {/* Permission section */}
+        {/* How it works — shown first */}
+        <div className="shrink-0">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#94a3b8' }}>
+            How it works
+          </p>
+          <div
+            className="overflow-hidden rounded-2xl"
+            style={{ background: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+          >
+            <HowItWorksStep num="1" color="#22c55e" title="Point your camera" desc="Aim at any item: a bottle, battery, cardboard box, or anything nearby." divider />
+            <HowItWorksStep num="2" color="#3b82f6" title='Tap "Check This" or just ask' desc="Press the button for a silent scan, or speak naturally. Both work." divider />
+            <HowItWorksStep num="3" color="#f97316" title="Special items saved automatically" desc="Depot drop-offs and bulk items are added to your Notes so you don't forget." divider={false} />
+          </div>
+        </div>
+
+        {/* Access needed — shown second, no button inside */}
         <div
           className="shrink-0 rounded-2xl p-4"
           style={{ background: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
@@ -100,76 +129,38 @@ export default function Onboarding({ city, onStart, onBack }: Props) {
             <PermCard icon="📷" label="Camera" sublabel="To see your items" state={camPerm} />
             <PermCard icon="🎤" label="Microphone" sublabel="To hear your voice" state={micPerm} />
           </div>
-
           {anyDenied && (
             <p className="mt-3 text-center text-xs" style={{ color: '#ef4444' }}>
               Permission denied. Please enable access in your browser settings and reload.
             </p>
           )}
-
-          {(camPerm === 'idle' || micPerm === 'idle') && !anyDenied && (
-            <button
-              onClick={requestPermissions}
-              disabled={requesting}
-              className="mt-3 w-full rounded-xl py-2.5 text-sm font-semibold transition-all active:scale-[0.98]"
-              style={{
-                background: requesting ? 'rgba(34,197,94,0.1)' : 'linear-gradient(145deg, #22c55e, #16a34a)',
-                color: requesting ? '#22c55e' : '#fff',
-                boxShadow: requesting ? 'none' : '0 4px 14px rgba(34,197,94,0.3)',
-              }}
-            >
-              {requesting ? 'Requesting access...' : 'Allow Camera and Microphone'}
-            </button>
-          )}
-        </div>
-
-        {/* How it works — single combined tile */}
-        <div className="shrink-0">
-          <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#94a3b8' }}>
-            How it works
-          </p>
-          <div
-            className="overflow-hidden rounded-2xl"
-            style={{ background: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
-          >
-            <HowItWorksStep
-              num="1"
-              color="#22c55e"
-              title="Point your camera"
-              desc="Aim at any item: a bottle, battery, cardboard box, or anything nearby."
-              divider
-            />
-            <HowItWorksStep
-              num="2"
-              color="#3b82f6"
-              title={'Tap "Check This" or just ask'}
-              desc="Press the button for a silent scan, or speak naturally. Both work."
-              divider
-            />
-            <HowItWorksStep
-              num="3"
-              color="#f97316"
-              title="Special items saved automatically"
-              desc="Depot drop-offs and bulk items are added to your Notes so you don't forget."
-              divider={false}
-            />
-          </div>
         </div>
       </div>
 
-      {/* CTA */}
-      <div className="shrink-0 px-5 pt-3 pb-8 pb-safe-6">
+      {/* Single CTA — handles both allow + start */}
+      <div className="shrink-0 px-5 pt-2 pb-8">
         <button
-          onClick={onStart}
-          disabled={!allGranted}
-          className="w-full rounded-2xl py-4 text-base font-bold transition-all active:scale-[0.98]"
+          onClick={handleCta}
+          disabled={!ctaEnabled}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold transition-all active:scale-[0.98]"
           style={{
-            background: allGranted ? 'linear-gradient(145deg, #22c55e, #16a34a)' : '#e2e8f0',
-            color: allGranted ? '#fff' : '#94a3b8',
-            boxShadow: allGranted ? '0 8px 28px rgba(34,197,94,0.3)' : 'none',
+            background: ctaEnabled
+              ? 'linear-gradient(145deg, #22c55e, #16a34a)'
+              : anyDenied ? '#fef2f2' : '#e2e8f0',
+            color: ctaEnabled ? '#fff' : anyDenied ? '#ef4444' : '#94a3b8',
+            boxShadow: ctaEnabled ? '0 8px 28px rgba(34,197,94,0.3)' : 'none',
+            border: anyDenied ? '1px solid #fecaca' : 'none',
           }}
         >
-          {allGranted ? 'Start Scanning' : 'Allow access to continue'}
+          {requesting && (
+            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+          )}
+          {allGranted && !requesting && (
+            <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 10h12M10 4l6 6-6 6" />
+            </svg>
+          )}
+          {ctaLabel}
         </button>
       </div>
     </div>
@@ -177,17 +168,16 @@ export default function Onboarding({ city, onStart, onBack }: Props) {
 }
 
 function PermCard({ icon, label, sublabel, state }: { icon: string; label: string; sublabel: string; state: PermState }) {
-  const isGranted = state === 'granted';
-  const isDenied = state === 'denied';
+  const isGranted   = state === 'granted';
+  const isDenied    = state === 'denied';
   const isRequesting = state === 'requesting';
 
   return (
     <div
-      className="flex flex-1 flex-col items-center gap-1.5 rounded-xl py-3 px-2 text-center"
+      className="flex flex-1 flex-col items-center gap-1.5 rounded-xl py-3 px-2 text-center transition-all duration-200"
       style={{
         background: isGranted ? '#f0fdf4' : isDenied ? '#fef2f2' : '#f8fafc',
         border: isGranted ? '1px solid #bbf7d0' : isDenied ? '1px solid #fecaca' : '1px solid #e2e8f0',
-        transition: 'all 0.2s ease',
       }}
     >
       <span className="text-2xl">{icon}</span>
@@ -196,9 +186,9 @@ function PermCard({ icon, label, sublabel, state }: { icon: string; label: strin
         <p className="text-[11px]" style={{ color: '#64748b' }}>{sublabel}</p>
       </div>
       <div className="mt-0.5 text-xs font-medium">
-        {isGranted && <span style={{ color: '#16a34a' }}>Granted</span>}
-        {isDenied && <span style={{ color: '#dc2626' }}>Denied</span>}
-        {isRequesting && <span style={{ color: '#94a3b8' }}>Requesting...</span>}
+        {isGranted   && <span style={{ color: '#16a34a' }}>✓ Granted</span>}
+        {isDenied    && <span style={{ color: '#dc2626' }}>Denied</span>}
+        {isRequesting && <span style={{ color: '#94a3b8' }}>Requesting…</span>}
         {state === 'idle' && <span style={{ color: '#94a3b8' }}>Required</span>}
       </div>
     </div>
@@ -212,7 +202,7 @@ function HowItWorksStep({
 }) {
   return (
     <>
-      <div className="flex items-start gap-3 px-3.5 py-3.5">
+      <div className="flex items-start gap-3 px-3.5 py-3">
         <div
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold"
           style={{ background: `${color}18`, color }}
