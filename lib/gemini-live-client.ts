@@ -32,6 +32,7 @@ export class GeminiLiveClient {
   private thinkingTranscript = '';    // pre-disposal text (not shown in caption)
   private responseTranscript = '';    // post-disposal spoken response text
   private disposalFiredThisTurn = false;
+  private disposalFiredLastTurn = false; // suppresses tool-call follow-up turn from showing in transcript
   private streamingPaused = false;
   private lastThumbnail: string | undefined;
 
@@ -182,10 +183,12 @@ export class GeminiLiveClient {
       }
 
       case 'turnComplete':
-        // For conversational turns (no disposal card), show the accumulated text now
-        if (!this.disposalFiredThisTurn && this.thinkingTranscript.trim()) {
+        // Show accumulated text only for pure conversational turns (no disposal, not a
+        // tool-call follow-up turn that immediately follows a disposal turn).
+        if (!this.disposalFiredThisTurn && !this.disposalFiredLastTurn && this.thinkingTranscript.trim()) {
           this.callbacks.onTranscriptUpdate(this.thinkingTranscript);
         }
+        this.disposalFiredLastTurn = this.disposalFiredThisTurn;
         this.thinkingTranscript = '';
         this.responseTranscript = '';
         this.disposalFiredThisTurn = false;
@@ -205,6 +208,8 @@ export class GeminiLiveClient {
         break;
 
       case 'userTranscript':
+        // New user speech — clear the follow-up suppression flag
+        this.disposalFiredLastTurn = false;
         this.callbacks.onUserTranscript?.(msg.text, msg.finished);
         break;
 

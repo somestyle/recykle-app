@@ -142,6 +142,9 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
   const [emojiFlash, setEmojiFlash] = useState<string | null>(null);
   const emojiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Camera shutter flash feedback
+  const [shutterFlash, setShutterFlash] = useState(false);
+
   // Captions
   const [captions, setCaptions] = useState<CaptionMsg[]>([]);
   const assistantBufRef = useRef('');
@@ -376,6 +379,9 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
 
   const handleCheckThis = useCallback(() => {
     if (clientRef.current && isLive && !isSpeaking) {
+      // Shutter flash feedback — prevents rage-clicks / confusion
+      setShutterFlash(true);
+      setTimeout(() => setShutterFlash(false), 500);
       clientRef.current.sendCheckThis();
     }
   }, [isLive, isSpeaking]);
@@ -399,6 +405,17 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
             {emojiFlash}
           </span>
         </div>
+      )}
+
+      {/* ── Shutter flash — white-to-transparent photo-taken effect ── */}
+      {shutterFlash && (
+        <div
+          className="pointer-events-none absolute inset-0 z-40"
+          style={{
+            background: 'white',
+            animation: 'shutterFade 0.5s ease-out forwards',
+          }}
+        />
       )}
 
       {/* ── Camera card ── */}
@@ -750,14 +767,14 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
             <div className="flex items-center justify-center px-2.5">
               <button
                 onClick={handleCheckThis}
-                disabled={!isLive || isSpeaking}
+                disabled={!isLive || isSpeaking || shutterFlash}
                 className="flex h-9 w-9 items-center justify-center rounded-full transition-all active:scale-90"
                 style={{
-                  background: isLive && !isSpeaking
+                  background: isLive && !isSpeaking && !shutterFlash
                     ? 'linear-gradient(145deg, #3b82f6, #2563eb)'
                     : 'rgba(255,255,255,0.06)',
-                  boxShadow: isLive && !isSpeaking ? '0 2px 10px rgba(59,130,246,0.4)' : 'none',
-                  opacity: isSpeaking ? 0.4 : 1,
+                  boxShadow: isLive && !isSpeaking && !shutterFlash ? '0 2px 10px rgba(59,130,246,0.4)' : 'none',
+                  opacity: isSpeaking || shutterFlash ? 0.4 : 1,
                   transition: 'all 0.25s ease',
                 }}
                 aria-label="Check this item"
