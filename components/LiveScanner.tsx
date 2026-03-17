@@ -322,11 +322,17 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
         lastCaptionRoleRef.current = 'user';
         if (text) userBufRef.current += text;
         upsertCaption('user', userBufRef.current);
-        if (finished) userBufRef.current = '';
+        // Once user finishes speaking, show thinking immediately
+        if (finished) {
+          userBufRef.current = '';
+          setPendingThinking(true);
+        }
       },
       onTurnComplete: () => {
         // Mark role as assistant so the next user speech starts a clean entry
         lastCaptionRoleRef.current = 'assistant';
+        // Clear thinking indicator when a conversational (non-disposal) turn ends
+        setPendingThinking(false);
       },
       onError: (msg) => {
         clientRef.current = null;
@@ -575,13 +581,6 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
             )}
           </button>
         )}
-        {/* Immediate thinking indicator — shown right after snap, before first response */}
-        {pendingThinking && (
-          <div style={{ paddingBottom: 6, paddingTop: 2 }}>
-            <span className="thinking-shimmer">Thinking…</span>
-          </div>
-        )}
-
         <div
           ref={captionScrollRef}
           className="overflow-y-auto py-3"
@@ -693,6 +692,26 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
               </div>
             );
           })}
+
+          {/* Pending thinking pill — appears inline at bottom of conversation */}
+          {pendingThinking && (
+            <div style={{ marginBottom: 0 }}>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  fontSize: 10,
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 4,
+                  padding: '2px 8px',
+                }}
+              >
+                <span className="thinking-shimmer">Thinking…</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

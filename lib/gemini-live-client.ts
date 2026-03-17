@@ -186,7 +186,11 @@ export class GeminiLiveClient {
         // Show accumulated text only for pure conversational turns (no disposal, not a
         // tool-call follow-up turn that immediately follows a disposal turn).
         if (!this.disposalFiredThisTurn && !this.disposalFiredLastTurn && this.thinkingTranscript.trim()) {
-          this.callbacks.onTranscriptUpdate(this.thinkingTranscript);
+          // Extract only the final paragraph — the actual spoken response.
+          // Everything before it is internal reasoning that must stay hidden.
+          const paras = this.thinkingTranscript.split(/\n{2,}/).map((p: string) => p.trim()).filter(Boolean);
+          const displayText = paras.length >= 2 ? paras[paras.length - 1] : this.thinkingTranscript;
+          this.callbacks.onTranscriptUpdate(displayText.trim());
         }
         this.disposalFiredLastTurn = this.disposalFiredThisTurn;
         this.thinkingTranscript = '';
