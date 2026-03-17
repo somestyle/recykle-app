@@ -7,7 +7,6 @@ import { resolveCityFromPostal } from '@/lib/types';
 interface Props {
   onCitySelected: (city: CityInfo) => void;
   onViewNotes?: () => void;
-  enterClass?: string;
 }
 
 const DEMO_CITIES = [
@@ -16,7 +15,7 @@ const DEMO_CITIES = [
   { label: 'San Francisco', region: 'CA · USA',    postal: '94102',   country: 'US' },
 ];
 
-export default function LocationSetup({ onCitySelected, onViewNotes, enterClass = 'screen-enter' }: Props) {
+export default function LocationSetup({ onCitySelected, onViewNotes }: Props) {
   const [postal, setPostal] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -63,7 +62,7 @@ export default function LocationSetup({ onCitySelected, onViewNotes, enterClass 
   }
 
   return (
-    <div className={`${enterClass} relative flex h-dvh flex-col items-center justify-center overflow-hidden px-6`} style={{ background: 'var(--bg)' }}>
+    <div className="relative flex h-dvh flex-col items-center justify-center overflow-hidden px-6" style={{ background: 'var(--bg)' }}>
 
       {/* Ambient radial glow */}
       <div
