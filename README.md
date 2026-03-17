@@ -35,7 +35,7 @@ This is what ambient intelligence should feel like: invisible help at the moment
 
 ## 🎥 Demo Video
 
-[Watch the Recykle Live Agent in Action](https://youtube.com/your-video-link)
+[Watch the Recykle Live Agent in Action](https://www.youtube.com/shorts/wE6vEf-5ekM)
 
 > A 3-minute walkthrough showing live **Multimodal** input (voice + camera), real-time disposal decisions, **Barge-in** interruption handling, and the full scan history flow.
 
