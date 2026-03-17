@@ -6,6 +6,7 @@ import { getHistory, clearHistory } from '@/lib/history';
 
 interface Props {
   onBack: () => void;
+  enterClass?: string;
 }
 
 type FilterTab = 'All' | DisposalCategory;
@@ -100,7 +101,7 @@ function formatTime(ts: number): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-export default function HistoryList({ onBack }: Props) {
+export default function HistoryList({ onBack, enterClass = 'screen-enter' }: Props) {
   const [all, setAll] = useState<ScanHistoryEntry[]>([]);
   const [filter, setFilter] = useState<FilterTab>('All');
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -121,7 +122,7 @@ export default function HistoryList({ onBack }: Props) {
   ) as Record<DisposalCategory, number>;
 
   return (
-    <div className="screen-enter flex h-dvh flex-col" style={{ background: 'var(--bg)' }}>
+    <div className={`${enterClass} flex h-dvh flex-col`} style={{ background: 'var(--bg)' }}>
 
       {/* ── Header ── */}
       <div

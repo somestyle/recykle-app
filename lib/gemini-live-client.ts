@@ -151,18 +151,17 @@ export class GeminiLiveClient {
           this.responseTranscript += msg.text;
           this.callbacks.onTranscriptUpdate(this.responseTranscript);
         } else {
-          // Pre-disposal or conversational — accumulate for Thinking bubble
-          // AND stream live into caption so the user sees it as it's spoken
+          // Pre-disposal reasoning — accumulate silently for Thinking bubble only.
+          // Do NOT stream to caption yet; if disposal never fires (conversational
+          // turn) we show it all at once on turnComplete.
           this.thinkingTranscript += msg.text;
-          this.callbacks.onTranscriptUpdate(this.thinkingTranscript);
         }
         break;
 
       case 'disposal': {
         this.disposalFiredThisTurn = true;
-        // Clear the streamed pre-disposal text from the caption — the card takes over,
-        // and the post-disposal verdict will stream fresh into the transcript
-        this.callbacks.onTranscriptUpdate('');
+        // Nothing was streamed pre-disposal, so no caption to clear.
+        // Reset responseTranscript so post-disposal verdict starts fresh.
         this.responseTranscript = '';
         const d = msg as typeof msg & { address?: { name: string; address: string; note: string } };
         this.callbacks.onDisposalResult(
@@ -183,7 +182,10 @@ export class GeminiLiveClient {
       }
 
       case 'turnComplete':
-        // Text is already streamed live — just reset buffers and signal turn end
+        // For conversational turns (no disposal card), show the accumulated text now
+        if (!this.disposalFiredThisTurn && this.thinkingTranscript.trim()) {
+          this.callbacks.onTranscriptUpdate(this.thinkingTranscript);
+        }
         this.thinkingTranscript = '';
         this.responseTranscript = '';
         this.disposalFiredThisTurn = false;

@@ -9,14 +9,20 @@ import type { CityInfo } from '@/lib/types';
 
 type AppScreen = 'setup' | 'onboarding' | 'scanner' | 'history';
 
+// Defines the forward direction of the app flow
+const SCREEN_ORDER: AppScreen[] = ['setup', 'onboarding', 'scanner', 'history'];
+
 export default function Home() {
   const [screen, setScreen] = useState<AppScreen>('setup');
-  // Use a key so each new screen re-mounts with its enter animation
   const [screenKey, setScreenKey] = useState(0);
+  const [direction, setDirection] = useState<'forward' | 'back'>('forward');
   const [city, setCity] = useState<CityInfo | null>(null);
   const prevScreenRef = useRef<AppScreen>('setup');
 
   function go(next: AppScreen) {
+    const fromIdx = SCREEN_ORDER.indexOf(screen);
+    const toIdx   = SCREEN_ORDER.indexOf(next);
+    setDirection(toIdx >= fromIdx ? 'forward' : 'back');
     prevScreenRef.current = screen;
     setScreen(next);
     setScreenKey(k => k + 1);
@@ -27,15 +33,18 @@ export default function Home() {
     go('onboarding');
   }
 
+  const enterClass = direction === 'forward' ? 'screen-enter-forward' : 'screen-enter-back';
+
   return (
     <main className="h-dvh w-full overflow-hidden bg-black">
       {screen === 'setup' && (
-        <LocationSetup key={screenKey} onCitySelected={handleCitySelected} onViewNotes={() => go('history')} />
+        <LocationSetup key={screenKey} enterClass={enterClass} onCitySelected={handleCitySelected} onViewNotes={() => go('history')} />
       )}
 
       {screen === 'onboarding' && city && (
         <Onboarding
           key={screenKey}
+          enterClass={enterClass}
           city={city}
           onStart={() => go('scanner')}
           onBack={() => go('setup')}
@@ -45,6 +54,7 @@ export default function Home() {
       {screen === 'scanner' && city && (
         <LiveScanner
           key={screenKey}
+          enterClass={enterClass}
           city={city}
           onOpenHistory={() => go('history')}
           onGoHome={() => go('setup')}
@@ -52,7 +62,7 @@ export default function Home() {
       )}
 
       {screen === 'history' && (
-        <HistoryList key={screenKey} onBack={() => go((prevScreenRef.current === 'setup' ? 'setup' : 'scanner') as AppScreen)} />
+        <HistoryList key={screenKey} enterClass={enterClass} onBack={() => go((prevScreenRef.current === 'setup' ? 'setup' : 'scanner') as AppScreen)} />
       )}
     </main>
   );

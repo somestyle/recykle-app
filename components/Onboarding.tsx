@@ -7,11 +7,12 @@ interface Props {
   city: CityInfo;
   onStart: () => void;
   onBack?: () => void;
+  enterClass?: string;
 }
 
 type PermState = 'idle' | 'requesting' | 'granted' | 'denied';
 
-export default function Onboarding({ city, onStart, onBack }: Props) {
+export default function Onboarding({ city, onStart, onBack, enterClass = 'screen-enter' }: Props) {
   const [camPerm, setCamPerm] = useState<PermState>('idle');
   const [micPerm, setMicPerm] = useState<PermState>('idle');
 
@@ -60,7 +61,7 @@ export default function Onboarding({ city, onStart, onBack }: Props) {
   const ctaEnabled = !requesting && !anyDenied;
 
   return (
-    <div className="screen-enter relative flex h-dvh flex-col" style={{ background: '#f8fafc' }}>
+    <div className={`${enterClass} relative flex h-dvh flex-col`} style={{ background: '#f8fafc' }}>
 
       {/* Back chevron */}
       {onBack && (

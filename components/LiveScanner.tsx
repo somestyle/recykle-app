@@ -123,10 +123,11 @@ interface LiveScannerProps {
   city: CityInfo;
   onOpenHistory: () => void;
   onGoHome: () => void;
+  enterClass?: string;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
-export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScannerProps) {
+export default function LiveScanner({ city, onOpenHistory, onGoHome, enterClass = 'screen-enter' }: LiveScannerProps) {
   // Session state
   const [sessionState, setSessionState] = useState<'idle' | 'starting' | 'live' | 'error'>('idle');
   const [geminiStatus, setGeminiStatus] = useState<GeminiLiveStatus>('disconnected');
@@ -390,7 +391,7 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
     : 'rgba(255,255,255,0.3)';
 
   return (
-    <div className="relative flex h-dvh flex-col overflow-hidden bg-black">
+    <div className={`${enterClass} relative flex h-dvh flex-col overflow-hidden bg-black`}>
 
       {/* ── Emoji flash — outside camera card to avoid overflow-hidden clip ── */}
       {emojiFlash && (
