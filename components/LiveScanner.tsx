@@ -101,13 +101,15 @@ function extractThinkingText(text: string): string | null {
 // / analysis paragraphs. We extract it so it shows as "Recykle: ..." in the caption.
 function splitThinkingAndResponse(thinkingText: string): { thinking: string; response: string | null } {
   const paragraphs = thinkingText.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
-  if (paragraphs.length < 2) return { thinking: thinkingText, response: null };
+
+  // Single paragraph — this IS the spoken response (no internal reasoning to separate).
+  // Return it as response with empty thinking so the Thinking pill shows no body.
+  if (paragraphs.length < 2) return { thinking: '', response: thinkingText };
 
   const last = paragraphs[paragraphs.length - 1];
-
-  const isHeading    = last.startsWith('**');
+  const isHeading     = last.startsWith('**');
   const isToolMention = last.includes('record_disposal') || last.includes('record\\_disposal');
-  const isAnalysis   = /^(I'(ve|m|d)|I (have|am|need|will|was|can)|The |This |Based |After |Having |Therefore|Thus|So the|In conclusion)/i.test(last);
+  const isAnalysis    = /^(I'(ve|m|d)|I (have|am|need|will|was|can)|The |This |Based |After |Having |Therefore|Thus|So the|In conclusion)/i.test(last);
 
   if (!isHeading && !isToolMention && !isAnalysis && last.length > 5) {
     return {
@@ -435,6 +437,13 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
     }
   }, [disposal]);
 
+  // ── Auto-scroll captions to bottom as new messages arrive ───────────────────
+  useEffect(() => {
+    const el = captionScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+  }, [captions, pendingThinking]);
+
   // ── Viewfinder color ────────────────────────────────────────────────────────
   const frameColor = isSpeaking
     ? 'rgba(96,165,250,0.75)'
@@ -649,6 +658,13 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
             const clean = cleanForDisplay(msg.text);
             const isOld = i < captions.length - 1;
             const isExpanded = expandedThinking.has(msg.id);
+
+            // Pre-compute split so extractedResponse is available for dedup below
+            const thinkingSplit = (msg.role === 'assistant' && msg.thinking && msg.thinkingText)
+              ? splitThinkingAndResponse(msg.thinkingText)
+              : { thinking: '', response: null };
+            const extractedResponse = thinkingSplit.response;
+
             if (!clean && !msg.thinking) return null;
             return (
               <div
@@ -660,37 +676,38 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
               >
                 {/* Thinking pill — only for assistant messages with disposal data */}
                 {msg.role === 'assistant' && msg.thinking && (() => {
-                  const split = msg.thinkingText
-                    ? splitThinkingAndResponse(msg.thinkingText)
-                    : { thinking: '', response: null };
-                  const thinkingBody = split.thinking;
-                  const extractedResponse = split.response;
+                  const thinkingBody = thinkingSplit.thinking;
+
+                  // The Thinking pill only expands if there's actual reasoning body text.
+                  // Single-paragraph thinkingText → thinkingBody is '' → no expandable pill.
+                  const hasThinkingBody = thinkingBody.trim().length > 0;
 
                   return (
                     <div style={{ marginBottom: extractedResponse || clean ? 3 : 0 }}>
-                      <button
-                        onClick={() => toggleThinking(msg.id)}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          fontSize: 10,
-                          color: 'rgba(255,255,255,0.3)',
-                          background: 'rgba(255,255,255,0.06)',
-                          border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: 4,
-                          padding: '2px 6px',
-                          cursor: 'pointer',
-                          fontFamily: 'inherit',
-                        }}
-                      >
-                        <span>Thinking</span>
-                        {/* Up/down chevron for thinking expand */}
-                        <svg viewBox="0 0 10 10" fill="none" style={{ width: 10, height: 10, transition: 'transform 0.2s', transform: isExpanded ? 'rotate(180deg)' : 'none' }} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M2 3.5l3 3 3-3" />
-                        </svg>
-                      </button>
-                      {isExpanded && (
+                      {hasThinkingBody && (
+                        <button
+                          onClick={() => toggleThinking(msg.id)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            fontSize: 10,
+                            color: 'rgba(255,255,255,0.3)',
+                            background: 'rgba(255,255,255,0.06)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: 4,
+                            padding: '2px 6px',
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          <span>Thinking</span>
+                          <svg viewBox="0 0 10 10" fill="none" style={{ width: 10, height: 10, transition: 'transform 0.2s', transform: isExpanded ? 'rotate(180deg)' : 'none' }} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M2 3.5l3 3 3-3" />
+                          </svg>
+                        </button>
+                      )}
+                      {hasThinkingBody && isExpanded && (
                         <div
                           style={{
                             marginTop: 4,
@@ -703,7 +720,7 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
                           }}
                         >
                           {msg.thinkingText
-                            ? thinkingBody || msg.thinkingText
+                            ? thinkingBody
                             : <>
                                 <div>Recognized: {msg.thinking.item}</div>
                                 <div>Material: {msg.thinking.material}</div>
@@ -714,7 +731,7 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
                           }
                         </div>
                       )}
-                      {/* Extracted spoken response from end of thinking transcript */}
+                      {/* Extracted spoken response from the thinkingText */}
                       {extractedResponse && (
                         <p className="mt-1.5 text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.82)', margin: '6px 0 0' }}>
                           <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginRight: 6, color: '#60a5fa' }}>
@@ -727,8 +744,10 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
                   );
                 })()}
 
-                {/* Spoken response (from onTranscriptUpdate — post-disposal) */}
-                {clean && (
+                {/* Spoken response (from onTranscriptUpdate — post-disposal).
+                    Skip if it duplicates extractedResponse (model spoke same text
+                    both before AND after the tool call). */}
+                {clean && clean.trim() !== extractedResponse?.trim() && (
                   <p
                     className="text-sm leading-snug"
                     style={{ color: 'rgba(255,255,255,0.82)', margin: 0 }}

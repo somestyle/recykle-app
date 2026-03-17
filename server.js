@@ -53,8 +53,8 @@ When the user speaks and asks about an item:
 1. Look carefully at what is visible in the camera feed
 2. Identify the specific item precisely (e.g. "black plastic clamshell container", not just "container")
 3. Determine the correct disposal category based ONLY on ${city}'s rules above
-4. IMMEDIATELY call record_disposal() with the structured data — do this BEFORE saying anything
-5. THEN speak: 1-2 sentences ONLY, starting directly with the verdict
+4. Speak your 1-2 sentence response FIRST — start directly with the verdict (e.g. "That's recyclable!")
+5. IMMEDIATELY after speaking, call record_disposal() ONCE with the structured data — do NOT speak again after calling it
 
 CRITICAL SPOKEN RESPONSE RULES:
 - Start with the answer: "That's recyclable!" / "That goes in the garbage." / "That needs a depot drop-off."
