@@ -37,12 +37,11 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
-      - name: Build & push image via Cloud Build
+      - name: Build & push image via Docker
         run: |
           IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.SERVICE_NAME }}"
-          gcloud builds submit \
-            --tag "$IMAGE" \
-            --project "${{ env.PROJECT_ID }}"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
       - name: Deploy to Cloud Run
