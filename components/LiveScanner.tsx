@@ -146,6 +146,8 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
   const [captions, setCaptions] = useState<CaptionMsg[]>([]);
   const assistantBufRef = useRef('');
   const userBufRef = useRef('');
+  // Tracks whose turn it is so we reset userBufRef whenever a new user turn starts
+  const lastCaptionRoleRef = useRef<'user' | 'assistant' | null>(null);
   const captionIdRef = useRef(0);
   const captionScrollRef = useRef<HTMLDivElement>(null);
 
@@ -300,12 +302,23 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
       },
       onTranscriptUpdate: (text) => {
         assistantBufRef.current = text;
+        lastCaptionRoleRef.current = 'assistant';
         upsertCaption('assistant', text);
       },
       onUserTranscript: (text, finished) => {
+        // If the last thing shown was an assistant message (or nothing), this is a
+        // fresh user turn — clear the buffer so old speech never bleeds through.
+        if (lastCaptionRoleRef.current !== 'user') {
+          userBufRef.current = '';
+        }
+        lastCaptionRoleRef.current = 'user';
         if (text) userBufRef.current += text;
         upsertCaption('user', userBufRef.current);
         if (finished) userBufRef.current = '';
+      },
+      onTurnComplete: () => {
+        // Mark role as assistant so the next user speech starts a clean entry
+        lastCaptionRoleRef.current = 'assistant';
       },
       onError: (msg) => {
         clientRef.current = null;

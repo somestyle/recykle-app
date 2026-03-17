@@ -13,6 +13,7 @@ export interface GeminiLiveCallbacks {
   onDisposalResult: (result: DisposalResult, thumbnail?: string, thinkingText?: string) => void;
   onTranscriptUpdate: (text: string) => void;
   onUserTranscript?: (text: string, finished: boolean) => void;
+  onTurnComplete?: () => void;
   onError: (message: string) => void;
 }
 
@@ -183,6 +184,7 @@ export class GeminiLiveClient {
         this.thinkingTranscript = '';
         this.responseTranscript = '';
         this.disposalFiredThisTurn = false;
+        this.callbacks.onTurnComplete?.();
         if (this.status === 'speaking') {
           this.onAudioDrained(() => this.setStatus('ready'));
         }
@@ -192,6 +194,7 @@ export class GeminiLiveClient {
         this.thinkingTranscript = '';
         this.responseTranscript = '';
         this.disposalFiredThisTurn = false;
+        this.callbacks.onTurnComplete?.();
         this.clearAudioQueue();
         this.setStatus('ready');
         break;
