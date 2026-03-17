@@ -145,6 +145,9 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
   // Camera shutter flash feedback
   const [shutterFlash, setShutterFlash] = useState(false);
 
+  // Immediate "thinking..." indicator shown right after camera snap / voice input
+  const [pendingThinking, setPendingThinking] = useState(false);
+
   // Captions
   const [captions, setCaptions] = useState<CaptionMsg[]>([]);
   const assistantBufRef = useRef('');
@@ -276,6 +279,7 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
         if (status === 'error') setSessionState('error');
       },
       onDisposalResult: (result, thumb, thinkingText) => {
+        setPendingThinking(false);
         setDisposal(result);
         setThumbnail(thumb);
         triggerEmoji(CATEGORY_EMOJI[result.category] ?? '♻️');
@@ -304,6 +308,7 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
         });
       },
       onTranscriptUpdate: (text) => {
+        setPendingThinking(false);
         assistantBufRef.current = text;
         lastCaptionRoleRef.current = 'assistant';
         upsertCaption('assistant', text);
@@ -379,8 +384,9 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
 
   const handleCheckThis = useCallback(() => {
     if (clientRef.current && isLive && !isSpeaking) {
-      // Shutter flash feedback — prevents rage-clicks / confusion
+      // Shutter flash + immediate thinking indicator
       setShutterFlash(true);
+      setPendingThinking(true);
       setTimeout(() => setShutterFlash(false), 500);
       clientRef.current.sendCheckThis();
     }
@@ -569,6 +575,13 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
             )}
           </button>
         )}
+        {/* Immediate thinking indicator — shown right after snap, before first response */}
+        {pendingThinking && (
+          <div style={{ paddingBottom: 6, paddingTop: 2 }}>
+            <span className="thinking-shimmer">Thinking…</span>
+          </div>
+        )}
+
         <div
           ref={captionScrollRef}
           className="overflow-y-auto py-3"
