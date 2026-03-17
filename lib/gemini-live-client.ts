@@ -152,10 +152,9 @@ export class GeminiLiveClient {
           this.responseTranscript += msg.text;
           this.callbacks.onTranscriptUpdate(this.responseTranscript);
         } else {
-          // Pre-disposal reasoning — accumulate silently for Thinking bubble only.
-          // Do NOT stream to caption yet; if disposal never fires (conversational
-          // turn) we show it all at once on turnComplete.
           this.thinkingTranscript += msg.text;
+          // Stream live so text appears alongside audio, not all at once on turnComplete
+          this.callbacks.onTranscriptUpdate(this.thinkingTranscript);
         }
         break;
 
@@ -183,15 +182,6 @@ export class GeminiLiveClient {
       }
 
       case 'turnComplete':
-        // Show accumulated text only for pure conversational turns (no disposal, not a
-        // tool-call follow-up turn that immediately follows a disposal turn).
-        if (!this.disposalFiredThisTurn && !this.disposalFiredLastTurn && this.thinkingTranscript.trim()) {
-          // Extract only the final paragraph — the actual spoken response.
-          // Everything before it is internal reasoning that must stay hidden.
-          const paras = this.thinkingTranscript.split(/\n{2,}/).map((p: string) => p.trim()).filter(Boolean);
-          const displayText = paras.length >= 2 ? paras[paras.length - 1] : this.thinkingTranscript;
-          this.callbacks.onTranscriptUpdate(displayText.trim());
-        }
         this.disposalFiredLastTurn = this.disposalFiredThisTurn;
         this.thinkingTranscript = '';
         this.responseTranscript = '';

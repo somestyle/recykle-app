@@ -218,6 +218,18 @@ button, [role="button"] {
   to   { opacity: 1; }
 }
 
+/* ─── Typewriter cursor ──────────────────────────────────────────────────────── */
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+.typewriter-cursor {
+  animation: cursorBlink 0.65s ease-in-out infinite;
+  color: rgba(255,255,255,0.45);
+  font-size: 0.75em;
+  vertical-align: middle;
+}
+
 /* ─── Reduced motion support ────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .screen-enter, .screen-enter-forward, .screen-enter-back { animation: none; opacity: 1; transform: none; }

@@ -148,6 +148,16 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
   // Immediate "thinking..." indicator shown right after camera snap / voice input
   const [pendingThinking, setPendingThinking] = useState(false);
 
+  // Pending disposal — stored here until audio finishes, then shown after 1s delay
+  const pendingDisposalRef = useRef<DisposalResult | null>(null);
+  const pendingDisposalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Card fade animation
+  const [cardVisible, setCardVisible] = useState(false);
+
+  // Streaming cursor — true while Gemini is actively speaking/streaming
+  const [isStreaming, setIsStreaming] = useState(false);
+
   // Captions
   const [captions, setCaptions] = useState<CaptionMsg[]>([]);
   const assistantBufRef = useRef('');
@@ -277,10 +287,10 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
         setGeminiStatus(status);
         if (status === 'ready') setSessionState('live');
         if (status === 'error') setSessionState('error');
+        setIsStreaming(status === 'speaking');
       },
       onDisposalResult: (result, thumb, thinkingText) => {
         setPendingThinking(false);
-        setDisposal(result);
         setThumbnail(thumb);
         triggerEmoji(CATEGORY_EMOJI[result.category] ?? '♻️');
         clientRef.current?.pause(); // pause mic/camera while card is shown
@@ -306,6 +316,8 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
           const next = [...prev, entry];
           return next.length > 4 ? next.slice(-4) : next;
         });
+
+        pendingDisposalRef.current = result;
       },
       onTranscriptUpdate: (text) => {
         setPendingThinking(false);
@@ -399,6 +411,29 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
   }, [isLive, isSpeaking]);
 
   useEffect(() => () => { clientRef.current?.stop(); }, []);
+
+  // Show disposal card 1s after voice finishes (audio drains → status → 'ready')
+  useEffect(() => {
+    if (geminiStatus === 'ready' && pendingDisposalRef.current) {
+      const result = pendingDisposalRef.current;
+      pendingDisposalTimerRef.current = setTimeout(() => {
+        setDisposal(result);
+        pendingDisposalRef.current = null;
+      }, 900);
+      return () => {
+        if (pendingDisposalTimerRef.current) clearTimeout(pendingDisposalTimerRef.current);
+      };
+    }
+  }, [geminiStatus]);
+
+  useEffect(() => {
+    if (disposal) {
+      const raf = requestAnimationFrame(() => setCardVisible(true));
+      return () => cancelAnimationFrame(raf);
+    } else {
+      setCardVisible(false);
+    }
+  }, [disposal]);
 
   // ── Viewfinder color ────────────────────────────────────────────────────────
   const frameColor = isSpeaking
@@ -528,64 +563,88 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
 
       {/* Result card — rendered at root level for full-screen centering */}
       {disposal && (
-        <ResultCard
-          result={disposal}
-          thumbnail={thumbnail}
-          city={city.displayName}
-          alreadySaved={noteSaved}
-          onSaveToNotes={() => {
-            addHistoryEntry({ timestamp: Date.now(), city: city.displayName, disposal, thumbnail });
-            setNoteSaved(true);
+        <div
+          style={{
+            opacity: cardVisible ? 1 : 0,
+            transform: cardVisible ? 'translateY(0)' : 'translateY(24px)',
+            transition: 'opacity 0.35s ease, transform 0.35s cubic-bezier(0.16,1,0.3,1)',
+            position: 'absolute', inset: 0, zIndex: 50,
+            display: 'flex', alignItems: 'flex-end',
+            pointerEvents: cardVisible ? 'auto' : 'none',
           }}
-          onDismiss={() => {
-            setDisposal(null);
-            setThumbnail(undefined);
-            setNoteSaved(false);
-            clientRef.current?.resume();
-          }}
-        />
+        >
+          <ResultCard
+            result={disposal}
+            thumbnail={thumbnail}
+            city={city.displayName}
+            alreadySaved={noteSaved}
+            onSaveToNotes={() => {
+              addHistoryEntry({ timestamp: Date.now(), city: city.displayName, disposal, thumbnail });
+              setNoteSaved(true);
+            }}
+            onDismiss={() => {
+              setCardVisible(false);
+              setTimeout(() => {
+                setDisposal(null);
+                setThumbnail(undefined);
+                setNoteSaved(false);
+                clientRef.current?.resume();
+              }, 280);
+            }}
+          />
+        </div>
       )}
 
       {/* ── Caption strip ── */}
       <div
         className="relative overflow-hidden bg-black"
         style={{
-          maxHeight: captions.length > 0
-            ? captionExpanded ? 'min(55dvh, 55vh)' : 'min(120px, 18dvh)'
-            : '0px',
-          transition: 'max-height 0.35s cubic-bezier(0.16,1,0.3,1)',
-          borderTop: captions.length > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+          height: captionExpanded ? 'min(55dvh, 55vh)' : '170px',
+          transition: 'height 0.35s cubic-bezier(0.16,1,0.3,1)',
+          borderTop: '1px solid rgba(255,255,255,0.06)',
           paddingLeft: 16, paddingRight: 16,
+          flexShrink: 0,
         }}
       >
         {/* Expand/collapse icon — diagonal arrows */}
-        {captions.length > 0 && (
-          <button
-            onClick={() => setCaptionExpanded(e => !e)}
-            className="absolute right-3 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full transition-colors"
-            style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.35)' }}
-            aria-label={captionExpanded ? 'Collapse captions' : 'Expand captions'}
-          >
-            {captionExpanded ? (
-              /* Collapse: two diagonal arrows pointing inward */
-              <svg viewBox="0 0 14 14" fill="none" className="h-3 w-3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 1l-4 4M5 1h4v4" />
-                <path d="M5 13l4-4M9 13H5V9" />
-              </svg>
-            ) : (
-              /* Expand: two diagonal arrows pointing outward */
-              <svg viewBox="0 0 14 14" fill="none" className="h-3 w-3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M1 5l4-4M1 1h4v4" />
-                <path d="M13 9l-4 4M13 13H9V9" />
-              </svg>
-            )}
-          </button>
-        )}
+        <button
+          onClick={() => setCaptionExpanded(e => !e)}
+          className="absolute right-3 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full transition-colors"
+          style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.35)' }}
+          aria-label={captionExpanded ? 'Collapse captions' : 'Expand captions'}
+        >
+          {captionExpanded ? (
+            /* Collapse: two diagonal arrows pointing inward */
+            <svg viewBox="0 0 14 14" fill="none" className="h-3 w-3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 1l-4 4M5 1h4v4" />
+              <path d="M5 13l4-4M9 13H5V9" />
+            </svg>
+          ) : (
+            /* Expand: two diagonal arrows pointing outward */
+            <svg viewBox="0 0 14 14" fill="none" className="h-3 w-3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 5l4-4M1 1h4v4" />
+              <path d="M13 9l-4 4M13 13H9V9" />
+            </svg>
+          )}
+        </button>
         <div
           ref={captionScrollRef}
           className="overflow-y-auto py-3"
           style={{ maxHeight: 'inherit', scrollbarWidth: 'none' } as React.CSSProperties}
         >
+          {captions.length === 0 && !pendingThinking && (
+            <div style={{ paddingTop: 10 }}>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.38)', margin: 0, lineHeight: 1.5 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginRight: 6, color: '#4ade80' }}>
+                  Recykle
+                </span>
+                Point your camera at any item and ask, or tap{' '}
+                <span style={{ color: 'rgba(255,255,255,0.55)' }}>the camera button</span>{' '}
+                to check how to dispose it.
+              </p>
+            </div>
+          )}
+
           {captions.map((msg, i) => {
             const clean = cleanForDisplay(msg.text);
             const isOld = i < captions.length - 1;
@@ -687,6 +746,9 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
                       {msg.role === 'user' ? 'You' : 'Recykle'}
                     </span>
                     {clean}
+                    {isStreaming && !isOld && msg.role === 'assistant' && (
+                      <span className="typewriter-cursor" aria-hidden="true"> ▊</span>
+                    )}
                   </p>
                 )}
               </div>
