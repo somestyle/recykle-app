@@ -10,6 +10,18 @@ Built for the **[Gemini Live Agent Challenge](https://geminiliveagentchallenge.d
 
 ---
 
+## The Problem & The Vision
+
+Every day, well-meaning people make recycling mistakes — not out of carelessness, but out of genuine confusion. This behavior is known as **"wish-cycling"**: tossing something in the recycling bin and *hoping* it belongs there. Studies estimate this causes up to **25% contamination** in residential recycling streams, which means entire truckloads of recyclables are sent to landfill because a single wrong item ruins the batch.
+
+The problem is not motivation — it's **cognitive burden**. Municipal recycling rules are complex, inconsistent across cities, and buried in PDFs nobody reads. Black plastic looks recyclable. Takeout containers feel like they should be compostable. Batteries seem harmless. The gap between intent and correct action costs us enormously.
+
+**Recykle's vision is to eliminate that gap entirely.** Instead of asking people to remember rules, we give them a conversational AI companion that knows their city's actual guidelines and answers instantly — in plain speech, while they're holding the item. No searching, no guessing, no guilt. Just hold it up and ask.
+
+This is what ambient intelligence should feel like: invisible help at the moment of decision, reducing friction so the right choice becomes the easy choice.
+
+---
+
 ## Why This Is Different
 
 | Feature | Standard chatbot | Recykle |
@@ -18,6 +30,14 @@ Built for the **[Gemini Live Agent Challenge](https://geminiliveagentchallenge.d
 | Interruptions | Must wait for response | Speak anytime, AI adapts in real-time |
 | Accuracy | General AI knowledge | Grounded in your city's actual municipal rules |
 | Output | Text on screen | Spoken response + structured result card |
+
+---
+
+## 🎥 Demo Video
+
+[Watch the Recykle Live Agent in Action](https://youtube.com/your-video-link)
+
+> A 3-minute walkthrough showing live **Multimodal** input (voice + camera), real-time disposal decisions, **Barge-in** interruption handling, and the full scan history flow.
 
 ---
 
@@ -40,6 +60,19 @@ Result Card (UI overlay) + Voice Playback + Notes (localStorage)
 ```
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the full Mermaid sequence diagram.
+
+### Resilience & Error Handling
+
+Recykle is built to degrade gracefully across a range of real-world edge cases:
+
+| Scenario | How Recykle handles it |
+|---|---|
+| **Poor lighting** | Gemini processes the frame and responds with reduced confidence; the result card reflects uncertainty and prompts the user to improve framing |
+| **Background noise** | AudioWorklet applies downsampling at 16 kHz; Gemini Live API's built-in VAD filters non-speech audio before processing |
+| **Lost WebSocket connection** | Client detects close events and auto-reconnects with exponential backoff (up to 3 retries); session state is preserved across reconnects |
+| **No item in frame** | System prompt instructs Recykle to ask the user to hold the item closer rather than guess or hallucinate a classification |
+| **Unsupported city** | Resolves to the nearest supported municipality by province/state prefix; communicates the assumption to the user |
+| **Gemini API error (1008 / overload)** | Server sends an `error` message to the client; UI displays a friendly recovery message and invites retry |
 
 ---
 
@@ -151,9 +184,9 @@ The deploy script:
 ## How It Works
 
 ### ⚡ Interruption handling (key differentiator)
-Unlike turn-based APIs, Gemini Live API allows the user to speak at any time — even mid-response. Recykle adapts immediately without any custom interruption logic. This is what makes it feel like a real conversation, not a chatbot.
+Unlike turn-based APIs, Gemini Live API allows the user to speak at any time — even mid-response. This capability is called **Barge-in**: the user interrupts Recykle's spoken answer and the AI adapts immediately — no custom interruption logic, no awkward silences, no queued responses to clear. This is what makes it feel like a real conversation, not a chatbot.
 
-### Real-time multimodal loop
+### Real-time **Multimodal** loop
 1. Browser captures microphone audio via **AudioWorklet** at 16 kHz, encodes as PCM16, sends to server via WebSocket
 2. Browser captures camera frames via **Canvas** at 1 fps, encodes as JPEG, sends to server via WebSocket
 3. Server proxies both streams to **Gemini Live API** via `ai.live.connect()`
@@ -161,8 +194,10 @@ Unlike turn-based APIs, Gemini Live API allows the user to speak at any time —
 5. Gemini returns a spoken audio response + a structured `<disposal_data>` JSON block in the text stream
 6. Server forwards audio chunks to browser for real-time playback, and parses the disposal JSON for the result card
 
-### City-specific grounding
-Recycling rules for each city are stored as JSON in `lib/recycling-rules/`. The full rules object is injected into the Gemini system prompt at session start, ensuring all disposal decisions are grounded in the actual municipal guidelines — not hallucinated.
+### City-specific grounding & hallucination prevention
+Recycling rules for each city are stored as JSON in `lib/recycling-rules/`. The **full rules object is injected into the Gemini system prompt at session start**, before any user input is processed.
+
+This is a deliberate architectural choice to **prevent AI hallucinations**. Without grounding, a general-purpose language model will answer recycling questions based on pre-trained knowledge — which may be outdated, region-agnostic, or simply incorrect. By forcing the agent to reason against the provided municipal JSON data, Recykle ensures that every disposal decision reflects what your city actually accepts today, not what a model learned during training. The system prompt explicitly instructs Gemini to treat the injected rules as authoritative and override any conflicting prior knowledge.
 
 ---
 
@@ -215,7 +250,7 @@ recykle-app/
 - **Gemini Live API** handles simultaneous audio + video streams with almost no latency. The real-time feel is genuinely impressive to demo live.
 - Injecting city recycling rules directly into the system prompt is a simple, effective way to ground the AI without a vector database or RAG pipeline.
 - The AudioWorklet + custom WebSocket proxy architecture keeps the API key server-side while still enabling real-time bidirectional streaming.
-- Interruption handling is built into the Live API. No custom logic needed to handle users speaking mid-response.
+- **Barge-in** / interruption handling is built into the Live API. No custom logic needed to handle users speaking mid-response.
 - Using Gemini function calling (`record_disposal` tool) instead of XML text parsing gives reliable structured output regardless of transcription order.
 
 ### Challenges
@@ -224,12 +259,14 @@ recykle-app/
 - WebSocket upgrade handling in Next.js required a custom `server.js`. The standard Next.js server does not support WebSocket upgrades out of the box.
 - Black plastic container disposal is a genuinely surprising result for most people. That moment is the strongest part of the demo.
 
-### If we had more time
+### What's next
 - Add Vertex AI API endpoint instead of AI Studio key for production use
 - Barcode scanning to look up product-specific recycling data
 - Expand to 10+ cities with a proper rules database
 - Native iOS/Android app (camera + mic access is much smoother in native)
 - Voice Activity Detection (VAD) visual feedback
+- **IoT Smart Bin Integration** — connect Recykle to smart bins that auto-sort items based on the AI's disposal decision, closing the loop from guidance to action
+- **Computer Vision Material Health Scores** — go beyond category labels and score the recyclability quality of a material (e.g. contamination level, resin type, degradation state) to help sorting facilities prioritize high-value streams
 
 ---
 
@@ -269,3 +306,9 @@ Built for the **[Gemini Live Agent Challenge](https://geminiliveagentchallenge.d
 ## License
 
 MIT
+
+<!--
+  REMINDER: Upload architecture.png as the Social Preview image for this repo.
+  GitHub repo → Settings → (scroll to) Social Preview → Upload an image → select architecture.png
+  This is what shows up when the repo link is shared on Twitter, LinkedIn, Devpost, etc.
+-->
