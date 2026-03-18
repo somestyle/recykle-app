@@ -19,9 +19,21 @@ export interface GeminiLiveCallbacks {
 
 export class GeminiLiveClient {
   private ws: WebSocket | null = null;
-  private audioContext: AudioContext | null = null;
+
+  // ── Input audio (microphone → PCM16 → WebSocket) ─────────────────────────
+  private audioContext: AudioContext | null = null;   // 16 kHz, input only
   private workletNode: AudioWorkletNode | null = null;
   private mediaStream: MediaStream | null = null;
+
+  // ── Output audio (PCM16 from Gemini → speaker) ───────────────────────────
+  // We route through an HTMLAudioElement so the phone's media-volume buttons
+  // control the level (Web Audio → audioContext.destination uses ringer volume
+  // on iOS, bypassing the hardware buttons).
+  private outputContext: AudioContext | null = null;  // 24 kHz, output only
+  private gainNode: GainNode | null = null;
+  private outputDest: MediaStreamAudioDestinationNode | null = null;
+  private outputEl: HTMLAudioElement | null = null;
+
   private videoElement: HTMLVideoElement | null = null;
   private videoInterval: ReturnType<typeof setInterval> | null = null;
   private audioQueue: AudioBuffer[] = [];
@@ -45,6 +57,10 @@ export class GeminiLiveClient {
   async start(city: CityInfo, videoEl: HTMLVideoElement): Promise<void> {
     this.videoElement = videoEl;
     this.setStatus('connecting');
+
+    // Set up output audio chain SYNCHRONOUSLY before any await so we're still
+    // inside the user-gesture stack on iOS (required for HTMLAudioElement autoplay).
+    this.setupOutputAudio();
 
     // Connect WebSocket
     const wsUrl = this.getWebSocketUrl();
@@ -222,6 +238,40 @@ export class GeminiLiveClient {
     }
   }
 
+  // ─── Output audio setup ───────────────────────────────────────────────────
+  // Called synchronously inside start() so we're still in the iOS user-gesture
+  // stack when audio.play() is invoked (avoids autoplay policy blocks).
+
+  private setupOutputAudio(): void {
+    try {
+      this.outputContext = new AudioContext({ sampleRate: 24000 });
+
+      // GainNode — default 0.65 (~65%) to avoid the blast-level default volume.
+      // Users can still raise/lower with hardware buttons via the audio element.
+      this.gainNode = this.outputContext.createGain();
+      this.gainNode.gain.value = 0.65;
+
+      // Route through MediaStreamAudioDestinationNode → HTMLAudioElement so the
+      // phone's media-volume buttons (not the ringer) control the level on iOS.
+      this.outputDest = this.outputContext.createMediaStreamDestination();
+      this.gainNode.connect(this.outputDest);
+
+      this.outputEl = new Audio();
+      this.outputEl.srcObject = this.outputDest.stream;
+      // play() must be called in user-gesture context; a caught rejection is fine
+      // (Chrome desktop may reject until audio actually starts streaming).
+      this.outputEl.play().catch(() => {});
+    } catch (err) {
+      // Fallback: direct to audioContext.destination (ringer volume on iOS, but
+      // at least audio still works).
+      console.warn('[Recykle] MediaStream audio output unavailable, falling back:', err);
+      if (this.outputContext && this.gainNode) {
+        this.gainNode.connect(this.outputContext.destination);
+      }
+      this.outputDest = null;
+    }
+  }
+
   // ─── Audio capture (microphone → PCM16 → WebSocket) ──────────────────────
 
   private async startAudioCapture(): Promise<void> {
@@ -297,11 +347,20 @@ export class GeminiLiveClient {
     }
   }
 
-  // ─── Audio playback (PCM16 chunks → AudioContext) ─────────────────────────
+  // ─── Audio playback (PCM16 chunks → outputContext → speaker) ─────────────
 
   private queueAudio(base64Data: string, mimeType: string): void {
-    if (!this.audioContext) {
-      this.audioContext = new AudioContext();
+    // Ensure output context is set up (fallback if setupOutputAudio wasn't called)
+    if (!this.outputContext) {
+      this.outputContext = new AudioContext();
+      this.gainNode = this.outputContext.createGain();
+      this.gainNode.gain.value = 0.65;
+      this.gainNode.connect(this.outputContext.destination);
+    }
+
+    // Resume context if suspended (can happen on iOS after a background switch)
+    if (this.outputContext.state === 'suspended') {
+      this.outputContext.resume().catch(() => {});
     }
 
     // Parse sample rate from MIME type (e.g. "audio/pcm;rate=24000")
@@ -314,7 +373,7 @@ export class GeminiLiveClient {
       float32[i] = pcm16[i] / 32768.0;
     }
 
-    const buffer = this.audioContext.createBuffer(1, float32.length, sampleRate);
+    const buffer = this.outputContext.createBuffer(1, float32.length, sampleRate);
     buffer.getChannelData(0).set(float32);
     this.audioQueue.push(buffer);
 
@@ -324,7 +383,7 @@ export class GeminiLiveClient {
   }
 
   private playNextAudio(): void {
-    if (!this.audioContext || this.audioQueue.length === 0) {
+    if (!this.outputContext || this.audioQueue.length === 0) {
       this.isPlayingAudio = false;
       return;
     }
@@ -332,11 +391,12 @@ export class GeminiLiveClient {
     this.isPlayingAudio = true;
     const buffer = this.audioQueue.shift()!;
 
-    const source = this.audioContext.createBufferSource();
+    const source = this.outputContext.createBufferSource();
     source.buffer = buffer;
-    source.connect(this.audioContext.destination);
+    // Connect to gainNode; if unavailable fall back to destination directly
+    source.connect(this.gainNode ?? this.outputContext.destination);
 
-    const startTime = Math.max(this.audioContext.currentTime, this.nextPlayTime);
+    const startTime = Math.max(this.outputContext.currentTime, this.nextPlayTime);
     source.start(startTime);
     this.nextPlayTime = startTime + buffer.duration;
 
@@ -352,7 +412,7 @@ export class GeminiLiveClient {
   }
 
   private onAudioDrained(callback: () => void): void {
-    if (!this.audioContext || this.audioQueue.length === 0) {
+    if (!this.outputContext || this.audioQueue.length === 0) {
       callback();
       return;
     }
@@ -403,6 +463,19 @@ export class GeminiLiveClient {
       this.audioContext.close().catch(() => {});
       this.audioContext = null;
     }
+
+    // Tear down output chain
+    if (this.outputEl) {
+      this.outputEl.pause();
+      this.outputEl.srcObject = null;
+      this.outputEl = null;
+    }
+    if (this.outputContext) {
+      this.outputContext.close().catch(() => {});
+      this.outputContext = null;
+    }
+    this.gainNode = null;
+    this.outputDest = null;
 
     this.clearAudioQueue();
 
