@@ -47,6 +47,9 @@ export class GeminiLiveClient {
   private disposalFiredLastTurn = false; // suppresses tool-call follow-up turn from showing in transcript
   private streamingPaused = false;
   private lastThumbnail: string | undefined;
+  // When the camera button fires a text turn we suppress the echoed inputTranscription
+  // so it doesn't appear as a "YOU" caption (no user actually spoke).
+  private suppressNextUserTranscript = false;
 
   constructor(callbacks: GeminiLiveCallbacks) {
     this.callbacks = callbacks;
@@ -119,6 +122,9 @@ export class GeminiLiveClient {
 
   // Send a "Check This" query — captures the current frame and sends it with the text turn
   sendCheckThis(): void {
+    // The clientContent turn will trigger an inputTranscription echo from Gemini.
+    // Suppress it so the model's analysis doesn't appear as a "YOU" caption.
+    this.suppressNextUserTranscript = true;
     // Capture a high-quality snapshot of the current camera frame
     let imageData: string | undefined;
     if (this.videoElement && this.videoElement.videoWidth > 0) {
@@ -199,12 +205,11 @@ export class GeminiLiveClient {
       }
 
       case 'turnComplete':
-        // Show conversational response only — not for tool follow-up turns after disposal
+        // Show conversational response only — not for tool follow-up turns after disposal.
+        // With thinkingBudget:0 there is no reasoning text — thinkingTranscript IS the full
+        // spoken response, so show all of it (not just the last paragraph).
         if (!this.disposalFiredThisTurn && !this.disposalFiredLastTurn && this.thinkingTranscript.trim()) {
-          // Extract only the final paragraph (actual response, not internal reasoning)
-          const paras = this.thinkingTranscript.split(/\n{2,}/).map((p: string) => p.trim()).filter(Boolean);
-          const displayText = paras.length >= 2 ? paras[paras.length - 1] : this.thinkingTranscript;
-          this.callbacks.onTranscriptUpdate(displayText.trim());
+          this.callbacks.onTranscriptUpdate(this.thinkingTranscript.trim());
         }
         this.disposalFiredLastTurn = this.disposalFiredThisTurn;
         this.thinkingTranscript = '';
@@ -226,6 +231,11 @@ export class GeminiLiveClient {
         break;
 
       case 'userTranscript':
+        // Suppress echoed inputTranscription from camera/text turns (not real user speech)
+        if (this.suppressNextUserTranscript) {
+          if (msg.finished) this.suppressNextUserTranscript = false;
+          break;
+        }
         // New user speech — clear the follow-up suppression flag
         this.disposalFiredLastTurn = false;
         this.callbacks.onUserTranscript?.(msg.text, msg.finished);

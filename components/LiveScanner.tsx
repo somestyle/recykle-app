@@ -172,9 +172,6 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
   // Thinking expand state
   const [expandedThinking, setExpandedThinking] = useState<Set<number>>(new Set());
 
-  // Caption strip expand state
-  const [captionExpanded, setCaptionExpanded] = useState(false);
-
   // Camera / media
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -234,12 +231,12 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cameraReady]);
 
-  // ── Auto-scroll captions ────────────────────────────────────────────────────
+  // ── Auto-scroll captions to bottom as new messages arrive ───────────────────
   useEffect(() => {
-    if (captionScrollRef.current) {
-      captionScrollRef.current.scrollTop = captionScrollRef.current.scrollHeight;
-    }
-  }, [captions]);
+    const el = captionScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+  }, [captions, pendingThinking]);
 
   // ── Caption helpers ─────────────────────────────────────────────────────────
   const upsertCaption = useCallback((role: 'user' | 'assistant', text: string) => {
@@ -252,7 +249,7 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
       }
       const newEntry: CaptionMsg = { id: captionIdRef.current++, role, text };
       const next = [...prev, newEntry];
-      return next.length > 4 ? next.slice(-4) : next;
+      return next.length > 50 ? next.slice(-50) : next;
     });
   }, []);
 
@@ -329,7 +326,7 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
             ...(absorbedText ? { thinkingText: absorbedText } : {}),
           };
           const next = [...basePrev, entry];
-          return next.length > 4 ? next.slice(-4) : next;
+          return next.length > 50 ? next.slice(-50) : next;
         });
 
         pendingDisposalRef.current = result;
@@ -617,38 +614,16 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
         </div>
       )}
 
-      {/* ── Caption strip ── */}
+      {/* ── Caption strip — fixed height, always scrollable ── */}
       <div
         className="relative overflow-hidden bg-black"
         style={{
-          height: captionExpanded ? 'min(55dvh, 55vh)' : '170px',
-          transition: 'height 0.35s cubic-bezier(0.16,1,0.3,1)',
+          height: 180,
           borderTop: '1px solid rgba(255,255,255,0.06)',
           paddingLeft: 16, paddingRight: 16,
           flexShrink: 0,
         }}
       >
-        {/* Expand/collapse icon — diagonal arrows */}
-        <button
-          onClick={() => setCaptionExpanded(e => !e)}
-          className="absolute right-3 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full transition-colors"
-          style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.35)' }}
-          aria-label={captionExpanded ? 'Collapse captions' : 'Expand captions'}
-        >
-          {captionExpanded ? (
-            /* Collapse: two diagonal arrows pointing inward */
-            <svg viewBox="0 0 14 14" fill="none" className="h-3 w-3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 1l-4 4M5 1h4v4" />
-              <path d="M5 13l4-4M9 13H5V9" />
-            </svg>
-          ) : (
-            /* Expand: two diagonal arrows pointing outward */
-            <svg viewBox="0 0 14 14" fill="none" className="h-3 w-3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M1 5l4-4M1 1h4v4" />
-              <path d="M13 9l-4 4M13 13H9V9" />
-            </svg>
-          )}
-        </button>
         <div
           ref={captionScrollRef}
           className="py-3"
@@ -744,46 +719,46 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
                           }
                         </div>
                       )}
-                      {/* Pre-disposal spoken text — shown only while post-disposal verdict hasn't arrived.
-                          Once clean text arrives (turn 2 after tool call), this is hidden
-                          so only one RECYKLE message appears per item. */}
-                      {extractedResponse && !clean.trim() && (
-                        <p className="mt-1.5 text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.82)', margin: '6px 0 0' }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginRight: 6, color: '#60a5fa' }}>
-                            Recykle
-                          </span>
-                          {extractedResponse}
-                        </p>
-                      )}
                     </div>
                   );
                 })()}
 
-                {/* Spoken response text (post-disposal verdict, or conversational reply).
-                    Always shown when non-empty — extractedResponse above is hidden once this exists. */}
-                {clean.trim() && (
-                  <p
-                    className="text-sm leading-snug"
-                    style={{ color: 'rgba(255,255,255,0.82)', margin: 0 }}
-                  >
-                    <span
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        textTransform: 'uppercase' as const,
-                        letterSpacing: '0.07em',
-                        marginRight: 6,
-                        color: msg.role === 'user' ? '#4ade80' : '#60a5fa',
-                      }}
+                {/* Unified text display:
+                    - Disposal entries: prefer extractedResponse (pre-disposal spoken explanation,
+                      which has the full disposal reasoning). Falls back to clean if empty.
+                    - Conversational / user entries: show clean text directly.
+                    This ensures the user sees the informative explanation rather than the
+                    short post-disposal filler ("You're all set!"). */}
+                {(() => {
+                  const displayText = (msg.thinking && extractedResponse)
+                    ? extractedResponse
+                    : clean;
+                  if (!displayText?.trim()) return null;
+                  return (
+                    <p
+                      className="text-sm leading-snug"
+                      style={{ color: 'rgba(255,255,255,0.82)', margin: 0 }}
                     >
-                      {msg.role === 'user' ? 'You' : 'Recykle'}
-                    </span>
-                    {clean}
-                    {isStreaming && !isOld && msg.role === 'assistant' && (
-                      <span className="typewriter-cursor" aria-hidden="true"> ▊</span>
-                    )}
-                  </p>
-                )}
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          textTransform: 'uppercase' as const,
+                          letterSpacing: '0.07em',
+                          marginRight: 6,
+                          color: msg.role === 'user' ? '#4ade80' : '#60a5fa',
+                        }}
+                      >
+                        {msg.role === 'user' ? 'You' : 'Recykle'}
+                      </span>
+                      {displayText}
+                      {/* Streaming cursor only for non-disposal conversational messages */}
+                      {isStreaming && !isOld && msg.role === 'assistant' && !msg.thinking && (
+                        <span className="typewriter-cursor" aria-hidden="true"> ▊</span>
+                      )}
+                    </p>
+                  );
+                })()}
               </div>
             );
           })}
