@@ -174,10 +174,12 @@ export class GeminiLiveClient {
           this.responseTranscript += msg.text;
           this.callbacks.onTranscriptUpdate(this.responseTranscript);
         } else {
-          // Pre-disposal or conversational — accumulate silently.
-          // Do NOT stream live: would show internal reasoning text AND would
-          // bypass the disposalFiredLastTurn guard causing duplicate entries.
           this.thinkingTranscript += msg.text;
+          // Stream live so transcript appears word-by-word in sync with voice.
+          // Skip only if we're in a suppressed follow-up turn after a disposal call.
+          if (!this.disposalFiredLastTurn) {
+            this.callbacks.onTranscriptUpdate(this.thinkingTranscript);
+          }
         }
         break;
 
@@ -205,12 +207,13 @@ export class GeminiLiveClient {
       }
 
       case 'turnComplete':
-        // Show conversational response only — not for tool follow-up turns after disposal.
-        // With thinkingBudget:0 there is no reasoning text — thinkingTranscript IS the full
-        // spoken response, so show all of it (not just the last paragraph).
+        // Live streaming already populated the caption, but fire one final update to ensure
+        // the complete text is committed (handles any race with the last text chunk).
         if (!this.disposalFiredThisTurn && !this.disposalFiredLastTurn && this.thinkingTranscript.trim()) {
           this.callbacks.onTranscriptUpdate(this.thinkingTranscript.trim());
         }
+        // Reset camera-echo suppression so real user voice works again after this response
+        this.suppressNextUserTranscript = false;
         this.disposalFiredLastTurn = this.disposalFiredThisTurn;
         this.thinkingTranscript = '';
         this.responseTranscript = '';
@@ -225,6 +228,7 @@ export class GeminiLiveClient {
         this.thinkingTranscript = '';
         this.responseTranscript = '';
         this.disposalFiredThisTurn = false;
+        this.suppressNextUserTranscript = false;
         this.callbacks.onTurnComplete?.();
         this.clearAudioQueue();
         this.setStatus('ready');

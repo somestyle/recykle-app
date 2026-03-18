@@ -626,11 +626,21 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
       >
         <div
           ref={captionScrollRef}
-          className="py-3"
-          style={{ height: '100%', overflowY: 'auto', scrollbarWidth: 'none' } as React.CSSProperties}
+          className="pb-3"
+          style={{
+            height: '100%',
+            overflowY: 'auto',
+            scrollbarWidth: 'none',
+            display: 'flex',
+            flexDirection: 'column',
+          } as React.CSSProperties}
         >
+          {/* Flex spacer — pushes messages to the bottom when content is short.
+              Collapses to 0 when messages overflow the container, allowing scroll. */}
+          <div style={{ flex: 1 }} />
+
           {captions.length === 0 && !pendingThinking && (
-            <div style={{ paddingTop: 10 }}>
+            <div style={{ paddingTop: 10, paddingBottom: 4 }}>
               <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.38)', margin: 0, lineHeight: 1.5 }}>
                 <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginRight: 6, color: '#4ade80' }}>
                   Recykle
@@ -644,7 +654,7 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
 
           {captions.map((msg, i) => {
             const clean = cleanForDisplay(msg.text);
-            const isOld = i < captions.length - 1;
+            const isLast = i === captions.length - 1;
             const isExpanded = expandedThinking.has(msg.id);
 
             // Pre-compute split so extractedResponse is available for dedup below
@@ -657,10 +667,7 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
             return (
               <div
                 key={msg.id}
-                style={{
-                  opacity: isOld ? 0.45 : 1,
-                  marginBottom: isOld ? 6 : 0,
-                }}
+                style={{ marginBottom: 8 }}
               >
                 {/* Thinking pill — only for assistant messages with disposal data */}
                 {msg.role === 'assistant' && msg.thinking && (() => {
@@ -752,8 +759,8 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
                         {msg.role === 'user' ? 'You' : 'Recykle'}
                       </span>
                       {displayText}
-                      {/* Streaming cursor only for non-disposal conversational messages */}
-                      {isStreaming && !isOld && msg.role === 'assistant' && !msg.thinking && (
+                      {/* Streaming cursor only for the latest non-disposal message */}
+                      {isStreaming && isLast && msg.role === 'assistant' && !msg.thinking && (
                         <span className="typewriter-cursor" aria-hidden="true"> ▊</span>
                       )}
                     </p>
