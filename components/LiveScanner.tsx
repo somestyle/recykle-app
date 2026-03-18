@@ -304,18 +304,31 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
         }
         setNoteSaved(autoSave);
 
-        // Create a new assistant caption entry with thinking data attached
-        // Response text will fill in via onTranscriptUpdate after disposal fires
+        // Create a new assistant caption entry with thinking data attached.
+        // IMPORTANT: absorb any preceding non-disposal assistant entry (turn 1 text
+        // spoken before the tool call) — this prevents two RECYKLE lines showing
+        // for the same item. The absorbed text becomes the thinkingText so it can
+        // optionally surface in the Thinking pill, while the post-disposal text
+        // (arriving via onTranscriptUpdate) becomes the single displayed verdict.
         const newId = captionIdRef.current++;
         setCaptions(prev => {
+          let absorbedText = thinkingText?.trim() || '';
+          let basePrev = prev;
+          const last = prev[prev.length - 1];
+          if (last && last.role === 'assistant' && !last.thinking && last.text.trim()) {
+            // Absorb the preceding plain assistant entry
+            if (!absorbedText) absorbedText = last.text.trim();
+            basePrev = prev.slice(0, -1);
+          }
+
           const entry: CaptionMsg = {
             id: newId,
             role: 'assistant',
             text: '',
             thinking: result,
-            ...(thinkingText?.trim() ? { thinkingText: thinkingText.trim() } : {}),
+            ...(absorbedText ? { thinkingText: absorbedText } : {}),
           };
-          const next = [...prev, entry];
+          const next = [...basePrev, entry];
           return next.length > 4 ? next.slice(-4) : next;
         });
 
@@ -638,8 +651,8 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
         </button>
         <div
           ref={captionScrollRef}
-          className="overflow-y-auto py-3"
-          style={{ maxHeight: 'inherit', scrollbarWidth: 'none' } as React.CSSProperties}
+          className="py-3"
+          style={{ height: '100%', overflowY: 'auto', scrollbarWidth: 'none' } as React.CSSProperties}
         >
           {captions.length === 0 && !pendingThinking && (
             <div style={{ paddingTop: 10 }}>
@@ -731,8 +744,10 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
                           }
                         </div>
                       )}
-                      {/* Extracted spoken response from the thinkingText */}
-                      {extractedResponse && (
+                      {/* Pre-disposal spoken text — shown only while post-disposal verdict hasn't arrived.
+                          Once clean text arrives (turn 2 after tool call), this is hidden
+                          so only one RECYKLE message appears per item. */}
+                      {extractedResponse && !clean.trim() && (
                         <p className="mt-1.5 text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.82)', margin: '6px 0 0' }}>
                           <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginRight: 6, color: '#60a5fa' }}>
                             Recykle
@@ -744,10 +759,9 @@ export default function LiveScanner({ city, onOpenHistory, onGoHome }: LiveScann
                   );
                 })()}
 
-                {/* Spoken response (from onTranscriptUpdate — post-disposal).
-                    Skip if it duplicates extractedResponse (model spoke same text
-                    both before AND after the tool call). */}
-                {clean && clean.trim() !== extractedResponse?.trim() && (
+                {/* Spoken response text (post-disposal verdict, or conversational reply).
+                    Always shown when non-empty — extractedResponse above is hidden once this exists. */}
+                {clean.trim() && (
                   <p
                     className="text-sm leading-snug"
                     style={{ color: 'rgba(255,255,255,0.82)', margin: 0 }}
